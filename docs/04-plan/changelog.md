@@ -10,10 +10,15 @@
 코드 작업 중 발견된 PRD/설계 이탈 사항을 누적 기록한다. 충분히 쌓이면 [`../05-process/iteration-template.md`](../05-process/iteration-template.md)를 복사해 `01-prd/iteration-4.md` 등을 분기 생성한다.
 
 ### Added
-- _(없음. 향후 코드 작업 시 채워질 자리.)_
+- **Husky 9.x + lint-staged 15.x** 도입: pre-commit hook(`.husky/pre-commit`)에서 staged TS/TSX 파일에 `eslint --fix --max-warnings=0` 자동 실행
+- **GitHub Actions CI 워크플로우** ([`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)):
+  - `verify` 잡: `npm ci` → lint → typecheck → test → build (Node 20, npm 캐시)
+  - `hook-verify` 잡: `.husky/pre-commit` 실행 권한 + `lint-staged` 호출 가능성 + PR diff 대상 dry run
+- 설정 가이드 [`../06-setup/git-hooks.md`](../06-setup/git-hooks.md), [`../06-setup/github-actions.md`](../06-setup/github-actions.md)
+- 기술 근거 [`../07-tech-rationale/README.md`](../07-tech-rationale/README.md) §12 (Husky · lint-staged · GitHub Actions)
 
 ### Changed
-- _(없음.)_
+- `package.json`: `prepare` 스크립트 추가, `husky` `lint-staged` devDependency 추가, `lint-staged` 설정 블록 추가
 
 ### Deprecated
 - _(없음.)_

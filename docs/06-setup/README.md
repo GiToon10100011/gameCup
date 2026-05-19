@@ -21,6 +21,8 @@
 | --- | --- | --- | --- |
 | [`initial-setup.md`](./initial-setup.md) | 로컬 개발 환경 (Node, npm, 의존성, dev 서버) | Iteration 3 / 2026.05.19 | 활성 |
 | [`rawg-api-key.md`](./rawg-api-key.md) | RAWG API 키 발급 + `.env.local` 설정 | Iteration 1 / 2026.03.31 | 활성 |
+| [`git-hooks.md`](./git-hooks.md) | Husky + lint-staged 로컬 hook 설정 | Iteration 3 / 2026.05.19 | 활성 |
+| [`github-actions.md`](./github-actions.md) | GitHub Actions CI 워크플로우 (lint·typecheck·test·build·hook 무결성) | Iteration 3 / 2026.05.19 | 활성 |
 | `supabase-setup.md` | Supabase 프로젝트 생성·DB 스키마·환경 변수 | Iteration 4 (예정) | 미작성 |
 | `sentry-setup.md` | Sentry DSN 발급·Next.js 통합·소스맵 업로드 | Iteration 4 (예정) | 미작성 |
 | `vercel-deploy.md` | Vercel 연동·환경 변수·프리뷰 배포 | Iteration 4 (예정) | 미작성 |

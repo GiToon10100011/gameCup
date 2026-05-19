@@ -214,7 +214,57 @@
 
 ---
 
-## 12. 유틸리티
+## 12. Git Hooks · CI
+
+### Husky
+- **도입 시점:** Iteration 3 / 2026.05.19 (Phase 0 마무리)
+- **분류:** 개발 도구 (Git hook 매니저)
+- **선택 이유:**
+  - `package.json` 의존성으로 hook을 관리해 팀원 머신 간 hook 누락을 방지
+  - `prepare` 스크립트 자동 실행으로 `npm install`만으로 hook 설치 완료
+  - v9에서 매우 가벼움 (~3KB), 별도 셸 스크립트 보일러플레이트 제거
+- **고려한 대안:**
+  - 수동 `.git/hooks/*` 셸 스크립트: 팀원마다 별도 설치 필요, 버전 관리 안 됨 → 탈락
+  - simple-git-hooks: 충분히 좋지만 설정 syntax가 husky만큼 표준화되어 있지 않음 → 탈락
+  - lefthook: 강력하지만 Node 외 바이너리 의존, 본 프로젝트엔 과함 → 탈락
+- **트레이드오프:** 또 하나의 devDependency, `.git` 없는 환경에서 prepare 스크립트 경고 발생 (CI에서 `HUSKY=0`으로 회피)
+- **교체 비용:** 낮음 (hook 셸 파일만 다른 도구로 이주)
+- **관련 요구사항:** NF-04 (확장성 — 품질 게이트 표준화)
+- **관련 가이드:** [`../06-setup/git-hooks.md`](../06-setup/git-hooks.md)
+
+### lint-staged
+- **도입 시점:** Iteration 3 / 2026.05.19
+- **분류:** 개발 도구 (staged 파일 단위 검사 러너)
+- **선택 이유:**
+  - pre-commit 단계에서 **변경된 파일만** ESLint를 돌려 커밋 속도 저하 최소화
+  - glob 기반 매칭으로 향후 `*.md` Prettier 등 확장 용이
+  - Husky와 사실상 표준 조합
+- **고려한 대안:**
+  - 전체 `npm run lint`를 pre-commit에 직접 실행: 큰 프로젝트에서 수십 초 ~ 분 단위로 느려져 개발 흐름 끊김 → 탈락
+  - pre-commit framework (Python 기반): Python 의존 추가 → 탈락
+- **트레이드오프:** glob 패턴 누락 시 신규 확장자 자동 검사 안 됨 (수동 추가 필요)
+- **교체 비용:** 매우 낮음
+- **관련 요구사항:** NF-04
+- **관련 가이드:** [`../06-setup/git-hooks.md`](../06-setup/git-hooks.md)
+
+### GitHub Actions
+- **도입 시점:** Iteration 3 / 2026.05.19
+- **분류:** CI/CD
+- **선택 이유:**
+  - GitHub 저장소에 별도 비용 없이 통합 (퍼블릭/소규모 프라이빗 무료 한도 충분)
+  - YAML 워크플로우가 코드와 함께 버전 관리 → 변경 이력·리뷰 가능
+  - `actions/setup-node` + npm 캐시로 빠른 의존성 복원
+- **고려한 대안:**
+  - CircleCI / GitLab CI: 별도 계정·연동 필요, GitHub 표준 통합 우위 부족 → 탈락
+  - Vercel 빌드만으로 대체: lint·typecheck·test 모두 수행하지 않음 → 탈락 (배포만 담당)
+- **트레이드오프:** GitHub 외부로 저장소 이전 시 워크플로우 재작성 필요
+- **교체 비용:** 중간 (CI 명령 자체는 `npm` 스크립트로 추상화되어 있어 재작성 최소화)
+- **관련 요구사항:** NF-04
+- **관련 가이드:** [`../06-setup/github-actions.md`](../06-setup/github-actions.md)
+
+---
+
+## 13. 유틸리티
 
 ### clsx
 - **도입 시점:** Iteration 1 (2026.03.31)
@@ -223,6 +273,8 @@
 - **고려한 대안:** `classnames` (구문 동일하나 번들 크기 약간 큼)
 - **트레이드오프:** 없음 수준
 - **교체 비용:** 매우 낮음
+
+---
 
 ---
 
