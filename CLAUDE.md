@@ -37,6 +37,7 @@
 | `github` | Git/GitHub 운영 | "커밋", "PR 생성", "푸시", "git init" | (Git 메타데이터·PR) |
 | `issue-branch` | 이슈·브랜치 운영 | "Sprint N 브랜치 분기", "이슈 목록", "이슈-브랜치 매핑" | GitHub Issues/Branches |
 | `project-bootstrap` 🌐 | 신규 프로젝트 부트스트랩 (글로벌, `~/.claude/agents/`) | "프로젝트 초기화", "PRD 분해해서 이슈 등록", "신규 저장소 부트스트랩" | GitHub Issues + 새 프로젝트의 `docs/` 트리·`CLAUDE.md`·`.claude/agents/` |
+| `docs-builder` 🌐 | PRD/아이디어 기반 문서 확장 (글로벌) | "문서 추천", "API 명세 만들어줘", "용어집·ADR·테스트 계획·페르소나·DB 스키마 작성" | `docs/` 트리 내 추가 산출 (PRD/UML/UC 외 모든 문서) |
 
 ### 위임 결정 트리
 
@@ -44,6 +45,7 @@
 사용자 요청
   │
   ├─ "프로젝트 초기화"/"신규 저장소 부트스트랩"/"PRD 분해해서 이슈 등록" → project-bootstrap (글로벌)
+  ├─ "API 명세"/"용어집"/"ADR"/"테스트 계획"/"페르소나"/"DB 스키마"/"문서 추천" → docs-builder (글로벌)
   ├─ "구현"/"버그 수정"/"코드 작성" → code
   ├─ "커밋"/"푸시"/"PR 생성·머지" → github
   ├─ "이슈 목록"/"Sprint N 브랜치"/"이슈-브랜치 매핑" → issue-branch
