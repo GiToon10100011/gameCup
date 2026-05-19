@@ -156,6 +156,7 @@ npm run e2e              # Playwright (Phase 4 이후)
 - **계층 건너뛰기 금지** — Presentation이 `lib/externalApiClient.ts`를 직접 import하지 말 것
 - **이슈 자동 멘션** — 작업 브랜치(`<type>/<number>-...`)에서 커밋 시 `.husky/prepare-commit-msg`가 제목에 `(#N)` 자동 부착. 통합 브랜치(`dev`)에서는 본문 `Refs: #N` 또는 PR 본문 `Closes #N`으로 명시 (`github` 에이전트가 처리)
 - **브랜치 명명 규칙** — `<type>/<issue-number>-<slug>` (예: `feat/5-game-search-dropdown`). 한글 브랜치명 금지. 일괄 분기는 `issue-branch` 에이전트에 위임
+- **Task 단위 작업·검증 원칙** — Sprint는 Task 이슈 단위로만 진행하고, 한 Task → 검증 → **사용자 검사 보고** → 다음 Task. Story 이슈는 자식 Task가 모두 완료된 뒤에만 통합 작업, Epic은 자식 Story가 모두 완료된 뒤에만 작업. 한 번에 여러 Task를 묶지 않는다 (사용자 명시 예외 제외).
 
 ---
 
