@@ -22,6 +22,8 @@ model: sonnet
 3. **시크릿 안전**: `.env.local`, `*.pem`, `credentials.json` 등 시크릿 파일이 staged area에 들어왔는지 항상 확인.
 4. **CLAUDE.md 위임 규칙 준수**: 커밋 메시지에 Co-Authored-By 라인을 항상 포함.
 5. **이슈 자동 멘션**: 작업 브랜치(`<type>/<number>-...`)에서는 `.husky/prepare-commit-msg` 훅이 커밋 제목에 `(#N)`을 자동 부착한다 — 사용자가 직접 적지 않아도 된다. 본인이 메시지를 만들 때도 자동 부착에 의존하지 말고 명시적으로 포함하는 것이 안전하다(아래 §이슈 자동 멘션 규칙 참조).
+6. **`gh` CLI 우선, MCP는 fallback**: 이슈·PR 생성·머지·코멘트·리뷰 등 GitHub 운영은 항상 `gh` CLI를 1순위로 사용한다. `gh`가 미설치이거나 특수 케이스(예: 부트스트랩 시 50개+ 이슈 일괄 등록)에만 GitHub MCP(`mcp__github__*`)를 fallback으로 사용. MCP는 매번 도구 로드 + 서버 왕복으로 느리다.
+7. **PR·이슈 본문은 `.github/` 템플릿 우선**: 저장소에 `.github/pull_request_template.md`나 `.github/ISSUE_TEMPLATE/*.md`가 있으면 그 골격을 우선 따르고, 필요한 추가 정보(위계 정보·검증 결과·Closes 등)는 자유롭게 덧붙인다. 템플릿의 모든 섹션 헤더와 placeholder를 빈 채로 두지 말고 채운다.
 
 ---
 
@@ -88,26 +90,100 @@ model: sonnet
 
 ## PR 절차
 
-1. `git status`, `git diff dev...HEAD`(또는 `main...HEAD`), `git log dev..HEAD` 병렬 실행
-2. 필요 시 브랜치 푸시 (`git push -u origin <branch>`)
-3. PR 생성: `gh pr create --base dev --title "[#N] ..." --body "$(cat <<'EOF' ... EOF)"`
-   - **제목 형식:** `[#N] <짧은 한국어 요약>` (`docs/04-plan/issues.md` §11의 PR 제목 규약)
-   - **base 브랜치:** Sprint 작업은 `dev`. 릴리즈 PR만 `main`
-   - **본문 필수 섹션:**
-     - Summary (변경 요지)
-     - Test plan (검증 체크리스트)
-     - `Closes #N` 또는 `Fixes #N` (이슈 자동 클로즈)
-     - 🤖 Generated with [Claude Code](https://claude.com/claude-code)
-4. 머지 후 작업 브랜치는 사용자 승인 시 삭제
+### 1. PR base 결정 (필수, 위계 흐름)
+
+작업 브랜치 → PR base는 **이슈 위계**에 따라 결정한다:
+
+| 작업 브랜치 종류 | head | base | 비고 |
+| --- | --- | --- | --- |
+| **Task** (예: `feat/9-search-input-component`) | feat/9-... | `feat/<상위 Story>-<slug>` (예: `feat/5-game-search-dropdown`) | `sprint-N-mapping.md`에서 부모 Story 조회 |
+| **Story** (예: `feat/5-game-search-dropdown`) | feat/5-... | `feat/<상위 Epic>-<slug>` (예: `feat/1-epic-search-and-candidate`) | `sprint-N-mapping.md`에서 부모 Epic 조회 |
+| **Epic** (예: `feat/1-epic-search-and-candidate`) | feat/1-... | `dev` | Epic이 통합 단위 |
+| **단발 chore/fix** (사용자 명시 시) | chore/... | `dev` | 위계 무시 예외 |
+
+부모 매핑 조회 우선순위:
+1. `docs/04-plan/sprint-N-mapping.md` (가장 빠름)
+2. `mcp__github__issue_read`로 자식 이슈 본문에서 부모 링크 추적 (체크리스트 `- [ ] #N`)
+3. `docs/04-plan/issues.md` 청사진 계층
+
+### 2. 실행 단계 (gh CLI 사용, 템플릿 우선)
+
+1. `git status`, `git diff <base>...HEAD`, `git log <base>..HEAD`, `git branch --show-current` 병렬 실행
+2. PR base 결정 (위 §1)
+3. 필요 시 브랜치 푸시 (`git push -u origin <branch>`)
+4. **`.github/pull_request_template.md` 존재 여부 확인.** 있으면 그 골격을 본문에 복사한 뒤 placeholder를 실제 내용으로 채우고 추가 섹션 덧붙임.
+5. PR 본문을 임시 파일로 저장:
+   ```bash
+   cat > /tmp/pr-body.md <<'EOF'
+   ## PR 제목
+   [#N] <짧은 한국어 요약>
+
+   ## PR 본문
+
+   ### 반영 브랜치
+   feat/<task>-... -> feat/<story>-...
+
+   ### PR 타입(하나 이상의 PR 타입을 선택해주세요)
+   - [x] 기능 추가
+   - [ ] ...
+
+   ### 작업 내용
+   - ...
+
+   ### 테스트 결과 (선택)
+   - npm run typecheck (errors 0)
+   - npm run lint (warnings 0)
+   - npm test (N/N passed)
+
+   ### 스크린샷 (선택)
+   해당 없음
+
+   ### 리뷰 요구사항(선택)
+   - ...
+
+   ---
+
+   ## 위계
+   - head: `<branch>` (Task/Story/Epic)
+   - base: `<parent>` (이유)
+
+   Closes #N
+
+   🤖 Generated with [Claude Code](https://claude.com/claude-code)
+   EOF
+   ```
+6. PR 생성:
+   ```bash
+   gh pr create \
+     --base <parent-branch> \
+     --head <work-branch> \
+     --title "[#N] <짧은 한국어 요약>" \
+     --body-file /tmp/pr-body.md
+   ```
+   - **제목 형식:** `[#N] <짧은 한국어 요약>` (`docs/04-plan/issues.md` §11)
+   - **본문은 저장소 템플릿(`.github/pull_request_template.md`) 골격 + 추가 섹션**
+7. 머지 후 작업 브랜치는 사용자 승인 시 삭제
+
+> **gh CLI 우선 원칙:** `gh pr create`가 작동하지 않을 때만(미설치/권한 등) GitHub MCP `mcp__github__create_pull_request`로 fallback.
+
+### 3. Epic/Story 브랜치 자체에서의 작업
+
+Epic·Story 브랜치는 통합 베이스이므로 **자식 PR이 모두 머지된 뒤에만** 추가 커밋이 들어간다. 자식 PR이 모두 머지되면:
+
+1. Story 브랜치에서 통합 검증 (페이지 조립·E2E·UX 보완) 후 PR 생성 → Epic 브랜치로
+2. Epic 브랜치에서 라벨·릴리즈 노트·통합 테스트 후 PR 생성 → `dev`로
 
 ---
 
-## 일반 GitHub 작업
+## 일반 GitHub 작업 (gh CLI 우선)
 
-- 이슈 조회: `gh issue list --state open` 또는 `mcp__github__list_issues`
+- 이슈 조회: `gh issue list --state open` (MCP는 fallback)
 - 이슈 보기: `gh issue view N`
-- PR 코멘트: `gh api repos/{owner}/{repo}/pulls/{n}/comments`
-- 새 이슈 등록: 가능하면 `issue-branch` 에이전트와 협의 후 라벨·Epic 매핑까지 함께
+- 이슈 생성: `gh issue create --title "..." --body-file <template-filled.md> --label "..."`
+  - 본문은 `.github/ISSUE_TEMPLATE/<type>.md` 골격 + 추가 정보 채움
+- PR 코멘트: `gh pr comment <N> --body "..."`
+- PR 리뷰: `gh pr review <N>`
+- 새 이슈 일괄 등록(부트스트랩 50개+): `issue-branch` 에이전트와 협의. 부모-자식 체크리스트 동기화가 필요하면 MCP가 더 적합할 수 있음.
 
 ---
 
