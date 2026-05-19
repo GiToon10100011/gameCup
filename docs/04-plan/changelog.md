@@ -26,6 +26,7 @@
 - 기술 근거 [`../07-tech-rationale/README.md`](../07-tech-rationale/README.md) §12 (Husky · lint-staged · GitHub Actions)
 
 ### Changed
+- **`gh` CLI 우선 + PR/이슈 템플릿 우선 영구 적용** (사용자 영구 지시, 2026.05.20): 이슈·PR 생성·머지·코멘트는 `gh` CLI 1순위(MCP는 fallback). 본문은 `.github/pull_request_template.md`와 `.github/ISSUE_TEMPLATE/*.md` 골격을 우선 따르고 추가 정보 덧붙임. `CLAUDE.md` §9·`.claude/agents/github.md`·글로벌 `project-bootstrap` §9.5와 사용자 메모리(`feedback_gh_cli_preferred.md`, `feedback_use_github_templates.md`)에 명문화.
 - **PR 위계 흐름 영구 적용** (사용자 영구 지시, 2026.05.20): Task PR → Story 브랜치, Story PR → Epic 브랜치, Epic PR → dev. Epic/Story 브랜치는 자식 PR이 모이는 통합 베이스로 코드 작성보다는 머지 후 보완 작업만. `CLAUDE.md` §9·`.claude/agents/{issue-branch,github}.md`·`docs/04-plan/sprint-1-mapping.md`에 명문화, 글로벌 `project-bootstrap` §9.5와 사용자 메모리 `feedback_pr_hierarchy_flow.md`에도 저장.
 - `package.json`: `prepare` 스크립트 추가, `husky` `lint-staged` devDependency 추가, `lint-staged` 설정 블록 추가
 - `CLAUDE.md` — 에이전트 로스터를 8개에서 **9개**로 확장(`issue-branch` 추가), 위임 결정 트리·안전 가드레일에 이슈 자동 멘션·브랜치 명명 규칙 추가

@@ -158,6 +158,8 @@ npm run e2e              # Playwright (Phase 4 이후)
 - **브랜치 명명 규칙** — `<type>/<issue-number>-<slug>` (예: `feat/5-game-search-dropdown`). 한글 브랜치명 금지. 일괄 분기는 `issue-branch` 에이전트에 위임
 - **Task 단위 작업·검증 원칙** — Sprint는 Task 이슈 단위로만 진행하고, 한 Task → 검증 → **사용자 검사 보고** → 다음 Task. Story 이슈는 자식 Task가 모두 완료된 뒤에만 통합 작업, Epic은 자식 Story가 모두 완료된 뒤에만 작업. 한 번에 여러 Task를 묶지 않는다 (사용자 명시 예외 제외).
 - **PR 위계 흐름** — Task PR → **Story 브랜치**로, Story PR → **Epic 브랜치**로, Epic PR → `dev`로 머지. Epic/Story 브랜치는 자식 PR이 모이는 **통합 베이스**이며 직접 코드 작성보다는 자식 머지 후 보완 작업만. PR base 결정은 `github` 에이전트가 `sprint-N-mapping.md`를 보고 자동 매핑한다.
+- **`gh` CLI 우선, MCP는 fallback** — 이슈·PR 운영은 항상 `gh` CLI 1순위. GitHub MCP는 `gh` 미설치/특수 케이스(부트스트랩 일괄 등록 등)에만.
+- **PR·이슈 본문은 `.github/` 템플릿 우선** — `.github/pull_request_template.md`와 `.github/ISSUE_TEMPLATE/*.md` 골격을 따른 뒤 추가 정보(위계·검증·Closes)를 자유롭게 덧붙임.
 
 ---
 
