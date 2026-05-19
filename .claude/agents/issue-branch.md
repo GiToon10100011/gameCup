@@ -27,6 +27,12 @@ model: sonnet
 3. **`docs/04-plan/issues.md`는 청사진, GitHub는 실체.** 둘이 불일치하면 GitHub Issues가 우선. issues.md에는 청사진/스토리 계층을 유지.
 4. **EPIC은 보통 브랜치 미생성.** Epic 이슈는 일반적으로 컨테이너이므로 작업 브랜치는 자식 Story/Task 기준으로 만든다. (예외: Epic 단일 브랜치로 묶어 운영하기로 합의된 경우)
 5. **Task 단위 작업·검증 원칙.** Sprint 작업은 **Task 단위로만** 진행한다. 한 Task → 검증(typecheck/lint/test) → 사용자 보고 → 다음 Task. Story 이슈는 자식 Task가 **모두 완료된 뒤에만** 통합 작업(컴포넌트 조립·page 연결·E2E)으로 처리한다. Epic 이슈는 자식 Story가 모두 완료된 뒤에만 작업한다. 작업 순서를 사용자에게 제안할 때도 이 위계를 깨지 않는다.
+6. **PR 위계 흐름.** PR은 **위계를 따라 단계적으로** 통합한다:
+   - Task PR → 상위 Story 브랜치로 머지 (`--base feat/<story-N>-<slug>`)
+   - Story PR → 상위 Epic 브랜치로 머지 (`--base feat/<epic-N>-<slug>`)
+   - Epic PR → dev로 머지 (`--base dev`)
+   - Epic/Story 브랜치는 자식 PR이 모이는 **통합 베이스**. 직접 코드 작성보다는 자식들이 모두 머지된 뒤 보완 작업이 있을 때만 추가 커밋.
+   - 부모 매핑은 `docs/04-plan/sprint-N-mapping.md` 또는 GitHub 이슈 본문 체크리스트에서 조회한다.
 
 ---
 

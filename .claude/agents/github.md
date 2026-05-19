@@ -88,17 +88,48 @@ model: sonnet
 
 ## PR 절차
 
-1. `git status`, `git diff dev...HEAD`(또는 `main...HEAD`), `git log dev..HEAD` 병렬 실행
-2. 필요 시 브랜치 푸시 (`git push -u origin <branch>`)
-3. PR 생성: `gh pr create --base dev --title "[#N] ..." --body "$(cat <<'EOF' ... EOF)"`
-   - **제목 형식:** `[#N] <짧은 한국어 요약>` (`docs/04-plan/issues.md` §11의 PR 제목 규약)
-   - **base 브랜치:** Sprint 작업은 `dev`. 릴리즈 PR만 `main`
+### 1. PR base 결정 (필수, 위계 흐름)
+
+작업 브랜치 → PR base는 **이슈 위계**에 따라 결정한다:
+
+| 작업 브랜치 종류 | head | base | 비고 |
+| --- | --- | --- | --- |
+| **Task** (예: `feat/9-search-input-component`) | feat/9-... | `feat/<상위 Story>-<slug>` (예: `feat/5-game-search-dropdown`) | `sprint-N-mapping.md`에서 부모 Story 조회 |
+| **Story** (예: `feat/5-game-search-dropdown`) | feat/5-... | `feat/<상위 Epic>-<slug>` (예: `feat/1-epic-search-and-candidate`) | `sprint-N-mapping.md`에서 부모 Epic 조회 |
+| **Epic** (예: `feat/1-epic-search-and-candidate`) | feat/1-... | `dev` | Epic이 통합 단위 |
+| **단발 chore/fix** (사용자 명시 시) | chore/... | `dev` | 위계 무시 예외 |
+
+부모 매핑 조회 우선순위:
+1. `docs/04-plan/sprint-N-mapping.md` (가장 빠름)
+2. `mcp__github__issue_read`로 자식 이슈 본문에서 부모 링크 추적 (체크리스트 `- [ ] #N`)
+3. `docs/04-plan/issues.md` 청사진 계층
+
+### 2. 실행 단계
+
+1. `git status`, `git diff <base>...HEAD`, `git log <base>..HEAD`, `git branch --show-current` 병렬 실행
+2. PR base 결정 (위 §1)
+3. 필요 시 브랜치 푸시 (`git push -u origin <branch>`)
+4. PR 생성:
+   ```
+   gh pr create \
+     --base <parent-branch> \
+     --title "[#N] <짧은 한국어 요약>" \
+     --body "$(cat <<'EOF' ... EOF)"
+   ```
+   - **제목 형식:** `[#N] <짧은 한국어 요약>` (`docs/04-plan/issues.md` §11)
    - **본문 필수 섹션:**
      - Summary (변경 요지)
      - Test plan (검증 체크리스트)
-     - `Closes #N` 또는 `Fixes #N` (이슈 자동 클로즈)
+     - `Closes #N` (그 이슈만. 부모 이슈는 별도 PR에서 닫음)
      - 🤖 Generated with [Claude Code](https://claude.com/claude-code)
-4. 머지 후 작업 브랜치는 사용자 승인 시 삭제
+5. 머지 후 작업 브랜치는 사용자 승인 시 삭제
+
+### 3. Epic/Story 브랜치 자체에서의 작업
+
+Epic·Story 브랜치는 통합 베이스이므로 **자식 PR이 모두 머지된 뒤에만** 추가 커밋이 들어간다. 자식 PR이 모두 머지되면:
+
+1. Story 브랜치에서 통합 검증 (페이지 조립·E2E·UX 보완) 후 PR 생성 → Epic 브랜치로
+2. Epic 브랜치에서 라벨·릴리즈 노트·통합 테스트 후 PR 생성 → `dev`로
 
 ---
 
