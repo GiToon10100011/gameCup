@@ -63,22 +63,54 @@ npm install
 
 ### 4.2 Hook 파일 (이미 저장소에 포함)
 
+#### pre-commit — staged 파일 lint
+
 `.husky/pre-commit`:
 
 ```sh
 npx lint-staged
 ```
 
-> 권한이 깨졌다면 `chmod +x .husky/pre-commit`로 복구.
+#### prepare-commit-msg — 브랜치명→이슈 번호 자동 멘션
+
+`.husky/prepare-commit-msg`는 현재 브랜치명이 `<type>/<number>-<slug>` 패턴이면 커밋 제목 끝에 ` (#N)`을 자동으로 부착한다. 결과: GitHub이 해당 커밋을 이슈 페이지에 자동 백링크.
+
+**작동 예시:**
+
+```text
+브랜치: feat/5-game-search-dropdown
+입력:   git commit -m "feat(search): SearchInput 디바운싱 구현"
+결과:   "feat(search): SearchInput 디바운싱 구현 (#5)"
+```
+
+**스킵 조건 (의도된 동작):**
+
+| 상황 | 사유 |
+| --- | --- |
+| `main`, `master`, `dev`, `develop`, `release/*` | 통합 브랜치 — 다중 이슈에 걸친 통합 커밋 가능. `Refs: #N` 본문 명시 권장 |
+| `detached HEAD` | 브랜치명 없음 |
+| 이미 메시지에 `#N` 토큰 포함 | 중복 방지 |
+| `merge`/`squash`/`fixup!`/`Revert` 커밋 | 자동 생성 메시지 보존 |
+| 브랜치명에서 숫자 추출 실패 | 명명 규칙 위반 — `issue-branch` 에이전트에 문의 |
+
+> 권한이 깨졌다면 `chmod +x .husky/pre-commit .husky/prepare-commit-msg`로 복구.
 
 ### 4.3 동작 확인
 
 ```bash
-# TS 파일을 수정하고 staged 상태로 만든 후 커밋 시도
-echo "const x: any = 1;" > /tmp/lintcheck.ts
-git add /tmp/lintcheck.ts   # 실제 경로 조정
-git commit -m "test"
+# 1) pre-commit (lint-staged) 확인
+echo "export const x = 1;" > src/types/_smoke.ts
+git add src/types/_smoke.ts
+git commit -m "test: pre-commit smoke"
 # → ESLint가 staged 파일에 대해 자동 실행됨
+
+# 2) prepare-commit-msg (이슈 자동 멘션) 확인
+git checkout feat/5-game-search-dropdown   # 또는 임의 작업 브랜치
+echo "export const y = 2;" > src/types/_smoke2.ts
+git add src/types/_smoke2.ts
+git commit -m "feat: 자동 멘션 확인"
+git log -1 --pretty=format:'%s'
+# → "feat: 자동 멘션 확인 (#5)"
 ```
 
 ---
@@ -111,6 +143,8 @@ git commit -m "test"
 | 커밋이 hook 없이 통과됨 | `core.hooksPath` 설정 충돌 | `git config --local --unset core.hooksPath` (전역 설정은 변경하지 말 것) |
 | CI에서 husky가 npm ci를 깨뜨림 | prepare 스크립트가 git 없는 환경에서 실패 | 워크플로우 env에 `HUSKY: 0` 설정 (이미 적용됨) |
 | Hook 우회 필요한 진짜 긴급 상황 | `--no-verify` 플래그 | **사용자 명시 승인 후에만**. 우회 시 사유를 커밋 메시지에 기록. |
+| 잘못된 `(#N)`이 부착됨 | 브랜치명/이슈 번호 불일치 | `git commit --amend`로 메시지만 수정 (사용자 승인 필요). 근본 해결: 브랜치를 올바른 이름으로 재생성 |
+| 통합 브랜치에서 `(#N)`을 원함 | 의도된 스킵 (다중 이슈) | 메시지 본문에 직접 `Refs: #N1, #N2` 명시. PR 머지 시 `Closes #N` |
 
 ---
 

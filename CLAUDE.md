@@ -23,7 +23,7 @@
 
 ## 2. 작업 위임 규칙 (Subagent Roster)
 
-본 프로젝트는 **8개의 분야별 서브에이전트**를 정의한다. 사용자 요청을 받으면 트리거 키워드와 작업 성격을 매칭해 해당 에이전트에 위임한다. 정의 본문은 [`.claude/agents/`](.claude/agents/).
+본 프로젝트는 **9개의 분야별 서브에이전트**를 정의한다. 사용자 요청을 받으면 트리거 키워드와 작업 성격을 매칭해 해당 에이전트에 위임한다. 정의 본문은 [`.claude/agents/`](.claude/agents/).
 
 | 에이전트 | 분야 | 트리거 예시 | 산출물 위치 |
 | --- | --- | --- | --- |
@@ -34,7 +34,8 @@
 | `docs-setup` | 환경 설정 가이드 | "Supabase 설치 가이드", "GCP 설정 안내", "Sentry 도입 절차" | `docs/06-setup/*.md` |
 | `docs-tech-rationale` | 기술 선택 근거 | "라이브러리 도입 근거 추가", "왜 X를 썼는지 기록" | `docs/07-tech-rationale/README.md` |
 | `code` | 코드 구현 | "F-XX 구현", "모듈 채우기", "리팩토링" | `src/**`, `tests/**` |
-| `github` | Git/GitHub | "커밋", "PR 생성", "main 푸시", "git init" | (Git 메타데이터) |
+| `github` | Git/GitHub 운영 | "커밋", "PR 생성", "푸시", "git init" | (Git 메타데이터·PR) |
+| `issue-branch` | 이슈·브랜치 운영 | "Sprint N 브랜치 분기", "이슈 목록", "이슈-브랜치 매핑" | GitHub Issues/Branches |
 
 ### 위임 결정 트리
 
@@ -42,7 +43,8 @@
 사용자 요청
   │
   ├─ "구현"/"버그 수정"/"코드 작성" → code
-  ├─ "커밋"/"푸시"/"PR" → github
+  ├─ "커밋"/"푸시"/"PR 생성·머지" → github
+  ├─ "이슈 목록"/"Sprint N 브랜치"/"이슈-브랜치 매핑" → issue-branch
   ├─ "PRD"/"기능 추가"/"요구사항" → docs-prd
   ├─ "UML"/"클래스/시퀀스/액티비티" → docs-uml
   ├─ "UC"/"유즈케이스" → docs-usecase
@@ -148,6 +150,8 @@ npm run e2e              # Playwright (Phase 4 이후)
 - **API 키 하드코딩 금지** — 반드시 환경 변수 경유
 - **Force push 금지** — `github` 에이전트는 사용자 명시 승인 없이는 force push하지 않음
 - **계층 건너뛰기 금지** — Presentation이 `lib/externalApiClient.ts`를 직접 import하지 말 것
+- **이슈 자동 멘션** — 작업 브랜치(`<type>/<number>-...`)에서 커밋 시 `.husky/prepare-commit-msg`가 제목에 `(#N)` 자동 부착. 통합 브랜치(`dev`)에서는 본문 `Refs: #N` 또는 PR 본문 `Closes #N`으로 명시 (`github` 에이전트가 처리)
+- **브랜치 명명 규칙** — `<type>/<issue-number>-<slug>` (예: `feat/5-game-search-dropdown`). 한글 브랜치명 금지. 일괄 분기는 `issue-branch` 에이전트에 위임
 
 ---
 

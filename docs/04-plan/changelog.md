@@ -10,6 +10,10 @@
 코드 작업 중 발견된 PRD/설계 이탈 사항을 누적 기록한다. 충분히 쌓이면 [`../05-process/iteration-template.md`](../05-process/iteration-template.md)를 복사해 `01-prd/iteration-4.md` 등을 분기 생성한다.
 
 ### Added
+- **Sprint 1 이슈→브랜치 일괄 분기** (EPIC-01, #1·#5~#22 총 18개 브랜치) dev(55fb47d) 기준 생성
+- **신규 에이전트 `issue-branch`** — GitHub Issues/Projects·스프린트 브랜치 운영 담당 ([`../../.claude/agents/issue-branch.md`](../../.claude/agents/issue-branch.md))
+- **Husky `prepare-commit-msg` 훅** — 작업 브랜치 커밋 시 제목 끝에 `(#N)` 자동 부착 ([`../../.husky/prepare-commit-msg`](../../.husky/prepare-commit-msg))
+- **Sprint 1 이슈-브랜치 매핑 문서** [`./sprint-1-mapping.md`](./sprint-1-mapping.md)
 - **운영 체크리스트** [`./next-actions.md`](./next-actions.md) 신설 — Phase 0 직후 사용자가 직접 처리할 블로킹/권장 작업 + Phase 1+ 참조 링크
 - **Husky 9.x + lint-staged 15.x** 도입: pre-commit hook(`.husky/pre-commit`)에서 staged TS/TSX 파일에 `eslint --fix --max-warnings=0` 자동 실행
 - **GitHub Actions CI 워크플로우** ([`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)):
@@ -20,6 +24,9 @@
 
 ### Changed
 - `package.json`: `prepare` 스크립트 추가, `husky` `lint-staged` devDependency 추가, `lint-staged` 설정 블록 추가
+- `CLAUDE.md` — 에이전트 로스터를 8개에서 **9개**로 확장(`issue-branch` 추가), 위임 결정 트리·안전 가드레일에 이슈 자동 멘션·브랜치 명명 규칙 추가
+- `.claude/agents/github.md` — 이슈 자동 멘션 메커니즘 + 통합 브랜치 `Refs:` 작성 규칙 추가, `issue-branch`와 책임 분담 명시
+- `docs/06-setup/git-hooks.md` — `prepare-commit-msg` 동작·스킵 조건·동작 확인 절차 추가
 
 ### Deprecated
 - _(없음.)_
