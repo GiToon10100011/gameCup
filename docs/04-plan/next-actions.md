@@ -15,16 +15,27 @@
 
 ---
 
-### [ ] 2. 로컬 main을 origin/main에 푸시
-
-남은 로컬 커밋 1개를 푸시한다.
+### [ ] 2. 로컬 dev를 origin/dev에 푸시
 
 ```bash
-git push origin main
+git push origin dev
 ```
 
-푸시 대상:
-- `4d2d76b` — `docs(plan): Phase 0 직후 운영 체크리스트 next-actions.md 추가` (+ 본 문서의 후속 갱신 커밋)
+> Sprint 1 작업 흐름은 main이 아닌 **dev로 PR을 보내는** GitFlow 변형이다. main은 릴리즈 후보로만 사용한다.
+
+---
+
+### [x] 7. Sprint 1 이슈→브랜치 분기 ✅ 2026.05.19 완료
+
+GitHub MCP로 EPIC-01 범위(#1, #5~#22)의 작업 브랜치 18개를 dev(55fb47d)에서 일괄 분기. 매핑은 [`./sprint-1-mapping.md`](./sprint-1-mapping.md) 참조.
+
+브랜치 명명 규칙: `<type>/<issue-number>-<slug>` (예: `feat/5-game-search-dropdown`, `test/16-error-state-stability`).
+
+---
+
+### [x] 8. 이슈 자동 멘션 hook 활성화 ✅ 2026.05.19 완료
+
+`.husky/prepare-commit-msg`로 작업 브랜치(`<type>/<number>-...`) 커밋 시 제목에 `(#N)` 자동 부착. 통합 브랜치(`dev`)는 의도적으로 스킵 — 본문 `Refs: #N` 또는 PR 본문 `Closes #N`으로 명시.
 
 ---
 
@@ -80,6 +91,20 @@ Phase 5(배포)에 정식 도입 예정이지만, 미리 프리뷰 배포를 받
 - [vercel.com](https://vercel.com) → New Project → GitHub 저장소 연결
 - 환경 변수에 `NEXT_PUBLIC_RAWG_KEY` 등록
 - 도입 시 [`../07-tech-rationale/README.md`](../07-tech-rationale/README.md) §10에 도입 시점 갱신, `docs/06-setup/vercel-deploy.md` 신설 (위임: `docs-setup`)
+
+---
+
+## 🌿 Phase 1 작업 흐름 (Sprint 1 — EPIC-01)
+
+각 이슈에 대해:
+
+1. `git fetch origin && git checkout feat/N-...` (브랜치는 이미 원격에 존재)
+2. `code` 에이전트에 구현 위임
+3. 커밋 — 브랜치명 기반 `(#N)` 자동 부착
+4. `git push -u origin feat/N-...`
+5. `github` 에이전트로 PR 생성: `[#N] <요약>` 제목, `Closes #N` 본문
+
+세부 매핑·의존성은 [`./sprint-1-mapping.md`](./sprint-1-mapping.md) 참조.
 
 ---
 
