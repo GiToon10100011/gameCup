@@ -23,7 +23,7 @@
 
 ## 2. 작업 위임 규칙 (Subagent Roster)
 
-본 프로젝트는 **9개의 분야별 서브에이전트**를 정의한다. 사용자 요청을 받으면 트리거 키워드와 작업 성격을 매칭해 해당 에이전트에 위임한다. 정의 본문은 [`.claude/agents/`](.claude/agents/).
+본 프로젝트는 **9개의 분야별 서브에이전트**를 정의한다(프로젝트 로컬, `.claude/agents/`). 추가로 사용자 레벨(`~/.claude/agents/`)에 **`project-bootstrap`** 글로벌 에이전트가 있어 모든 신규 프로젝트의 최초 초기화를 담당한다. 사용자 요청을 받으면 트리거 키워드와 작업 성격을 매칭해 해당 에이전트에 위임한다.
 
 | 에이전트 | 분야 | 트리거 예시 | 산출물 위치 |
 | --- | --- | --- | --- |
@@ -36,12 +36,14 @@
 | `code` | 코드 구현 | "F-XX 구현", "모듈 채우기", "리팩토링" | `src/**`, `tests/**` |
 | `github` | Git/GitHub 운영 | "커밋", "PR 생성", "푸시", "git init" | (Git 메타데이터·PR) |
 | `issue-branch` | 이슈·브랜치 운영 | "Sprint N 브랜치 분기", "이슈 목록", "이슈-브랜치 매핑" | GitHub Issues/Branches |
+| `project-bootstrap` 🌐 | 신규 프로젝트 부트스트랩 (글로벌, `~/.claude/agents/`) | "프로젝트 초기화", "PRD 분해해서 이슈 등록", "신규 저장소 부트스트랩" | GitHub Issues + 새 프로젝트의 `docs/` 트리·`CLAUDE.md`·`.claude/agents/` |
 
 ### 위임 결정 트리
 
 ```
 사용자 요청
   │
+  ├─ "프로젝트 초기화"/"신규 저장소 부트스트랩"/"PRD 분해해서 이슈 등록" → project-bootstrap (글로벌)
   ├─ "구현"/"버그 수정"/"코드 작성" → code
   ├─ "커밋"/"푸시"/"PR 생성·머지" → github
   ├─ "이슈 목록"/"Sprint N 브랜치"/"이슈-브랜치 매핑" → issue-branch

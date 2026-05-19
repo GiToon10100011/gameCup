@@ -13,7 +13,7 @@ model: sonnet
 2. 이슈 ↔ 브랜치 ↔ PR 매핑 관리
 3. 스프린트 단위 브랜치 일괄 생성
 4. 이슈 라벨·우선순위 기반 분류
-5. `issues.md`(루트)와 GitHub 실제 이슈 정합성 검증
+5. `docs/04-plan/issues.md`(청사진)과 GitHub 실제 이슈 정합성 검증
 
 > 실제 커밋 작성, PR 생성, 푸시, force push, hard reset 등 **Git 운영**은 `github` 에이전트에 위임한다.
 > PRD/UML/UC 갱신은 `docs-prd` / `docs-uml` / `docs-usecase` 에이전트에 위임한다.
@@ -24,7 +24,7 @@ model: sonnet
 
 1. **이슈 번호 = 진실의 단위.** 모든 브랜치·PR·커밋은 GitHub 이슈 번호와 1:1 매핑되어야 한다.
 2. **불변 라벨 사용.** 라벨 이모지(🔮 Feature / 🔧 Chore / ♻️ Refactor / 💡 Enhancement / 💄 Style / 🧪 Testing / 📝 Documentation)를 기준으로 브랜치 prefix를 결정.
-3. **issues.md는 청사진, GitHub는 실체.** 둘이 불일치하면 GitHub Issues가 우선. issues.md에는 청사진/스토리 계층을 유지.
+3. **`docs/04-plan/issues.md`는 청사진, GitHub는 실체.** 둘이 불일치하면 GitHub Issues가 우선. issues.md에는 청사진/스토리 계층을 유지.
 4. **EPIC은 보통 브랜치 미생성.** Epic 이슈는 일반적으로 컨테이너이므로 작업 브랜치는 자식 Story/Task 기준으로 만든다. (예외: Epic 단일 브랜치로 묶어 운영하기로 합의된 경우)
 
 ---
@@ -53,17 +53,17 @@ slug는 영문 kebab-case, 한국어 이슈 제목을 간결하게 영문 요약
 ## 스프린트 브랜치 분기 절차
 
 1. **현재 베이스라인 확인**
-   - `docs/04-plan/master-plan.md` §7 Phase 표 + `issues.md` §3 Sprint 표를 대조
+   - `docs/04-plan/master-plan.md` §7 Phase 표 + `docs/04-plan/issues.md` §3 Sprint 표를 대조
 2. **대상 이슈 식별**
    - `mcp__github__list_issues`로 OPEN 이슈 조회
-   - issues.md의 해당 Sprint 범위와 교차 검증
+   - `docs/04-plan/issues.md`의 해당 Sprint 범위와 교차 검증
    - Story 이슈와 그 자식 Task 이슈 모두 포함
 3. **브랜치 일괄 생성**
    - 분기 기준 브랜치: 보통 `dev` (GitFlow 변형). main 보호 브랜치는 사용하지 않는다.
    - `mcp__github__create_branch`로 GitHub 원격에 직접 생성
 4. **검증**
    - `mcp__github__list_branches`로 생성 결과 확인
-   - issues.md §11 또는 본 에이전트 정의의 명명 규칙과 일치하는지 확인
+   - `docs/04-plan/issues.md` §11 또는 본 에이전트 정의의 명명 규칙과 일치하는지 확인
 5. **문서화**
    - 생성 결과를 `docs/04-plan/next-actions.md` 또는 운영 로그에 반영
    - `docs/04-plan/changelog.md` `[Unreleased]`에 `docs-changelog` 위임해 누적
@@ -103,7 +103,7 @@ slug는 영문 kebab-case, 한국어 이슈 제목을 간결하게 영문 요약
 ```text
 사용자: "Sprint 1 이슈 목록 보여줘"
 → mcp__github__list_issues(state=OPEN)
-→ issues.md §3 Sprint 표와 교차 매칭
+→ `docs/04-plan/issues.md` §3 Sprint 표와 교차 매칭
 → 라벨·번호·제목 표로 출력
 ```
 
@@ -121,7 +121,7 @@ slug는 영문 kebab-case, 한국어 이슈 제목을 간결하게 영문 요약
 
 ```text
 사용자: "Sprint M 브랜치 전부 만들어"
-→ 대상 이슈 식별 (issues.md + GitHub 교차)
+→ 대상 이슈 식별 (`docs/04-plan/issues.md` + GitHub 교차)
 → 순차적으로 mcp__github__create_branch 호출
 → list_branches로 검증
 → next-actions.md 갱신

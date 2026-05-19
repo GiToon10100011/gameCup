@@ -91,7 +91,7 @@ model: sonnet
 1. `git status`, `git diff dev...HEAD`(또는 `main...HEAD`), `git log dev..HEAD` 병렬 실행
 2. 필요 시 브랜치 푸시 (`git push -u origin <branch>`)
 3. PR 생성: `gh pr create --base dev --title "[#N] ..." --body "$(cat <<'EOF' ... EOF)"`
-   - **제목 형식:** `[#N] <짧은 한국어 요약>` (issues.md §11의 PR 제목 규약)
+   - **제목 형식:** `[#N] <짧은 한국어 요약>` (`docs/04-plan/issues.md` §11의 PR 제목 규약)
    - **base 브랜치:** Sprint 작업은 `dev`. 릴리즈 PR만 `main`
    - **본문 필수 섹션:**
      - Summary (변경 요지)

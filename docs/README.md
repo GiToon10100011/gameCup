@@ -24,6 +24,7 @@
 ## 빠른 진입점
 
 - **🟢 지금 당장 할 일:** [`04-plan/next-actions.md`](./04-plan/next-actions.md)
+- **🧩 이슈 청사진 (Epic·Story·Task 분해):** [`04-plan/issues.md`](./04-plan/issues.md)
 - **🗺 Sprint 1 이슈-브랜치 매핑:** [`04-plan/sprint-1-mapping.md`](./04-plan/sprint-1-mapping.md)
 - **프로젝트 이해 → 구현 시작:** [`04-plan/master-plan.md`](./04-plan/master-plan.md)
 - **현재 베이스라인 PRD:** [`01-prd/iteration-3.md`](./01-prd/iteration-3.md)

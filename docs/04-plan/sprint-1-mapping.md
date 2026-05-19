@@ -1,6 +1,6 @@
 # 🗺 Sprint 1 — 이슈 ↔ 브랜치 매핑
 
-> **작성:** 2026.05.19 · **출처:** `issues.md` §3 Sprint 1 + GitHub Issues #1, #5~#22
+> **작성:** 2026.05.19 · **출처:** [`./issues.md`](./issues.md) §3 Sprint 1 + GitHub Issues #1, #5~#22
 > **분기 기준:** `dev` (55fb47d) · **머지 대상:** `dev` (PR base)
 
 ---
@@ -61,7 +61,7 @@
 
 ---
 
-## 의존성 (issues.md §5)
+## 의존성 ([`./issues.md`](./issues.md) §5)
 
 ```
 EPIC-00 (이미 완료 — Phase 0 스캐폴딩)

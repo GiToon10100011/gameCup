@@ -10,6 +10,8 @@
 코드 작업 중 발견된 PRD/설계 이탈 사항을 누적 기록한다. 충분히 쌓이면 [`../05-process/iteration-template.md`](../05-process/iteration-template.md)를 복사해 `01-prd/iteration-4.md` 등을 분기 생성한다.
 
 ### Added
+- **글로벌 에이전트 `project-bootstrap`** 신규 — 모든 신규 프로젝트의 PRD→이슈 분해·GitHub MCP 등록·docs 구조 자동 부트스트랩 담당. 위치: `~/.claude/agents/project-bootstrap.md` (사용자 레벨, 모든 프로젝트 공용)
+- **`docs/04-plan/issues.md`** — 루트의 `issues.md`를 docs 트리 안으로 이동·정리 (청사진 위치 표준화)
 - **Sprint 1 이슈→브랜치 일괄 분기** (EPIC-01, #1·#5~#22 총 18개 브랜치) dev(55fb47d) 기준 생성
 - **신규 에이전트 `issue-branch`** — GitHub Issues/Projects·스프린트 브랜치 운영 담당 ([`../../.claude/agents/issue-branch.md`](../../.claude/agents/issue-branch.md))
 - **Husky `prepare-commit-msg` 훅** — 작업 브랜치 커밋 시 제목 끝에 `(#N)` 자동 부착 ([`../../.husky/prepare-commit-msg`](../../.husky/prepare-commit-msg))
@@ -27,6 +29,9 @@
 - `CLAUDE.md` — 에이전트 로스터를 8개에서 **9개**로 확장(`issue-branch` 추가), 위임 결정 트리·안전 가드레일에 이슈 자동 멘션·브랜치 명명 규칙 추가
 - `.claude/agents/github.md` — 이슈 자동 멘션 메커니즘 + 통합 브랜치 `Refs:` 작성 규칙 추가, `issue-branch`와 책임 분담 명시
 - `docs/06-setup/git-hooks.md` — `prepare-commit-msg` 동작·스킵 조건·동작 확인 절차 추가
+- `CLAUDE.md` — 글로벌 `project-bootstrap` 안내 추가, 위임 결정 트리에 신규 프로젝트 초기화 라우팅 추가
+- `.claude/agents/issue-branch.md` · `.claude/agents/github.md` · `docs/04-plan/sprint-1-mapping.md` — `issues.md` 참조 경로를 `docs/04-plan/issues.md`로 갱신
+- `docs/README.md` — issues.md 새 위치 + 이슈 청사진 빠른 진입점 추가
 
 ### Deprecated
 - _(없음.)_
