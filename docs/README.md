@@ -23,6 +23,7 @@
 
 ## 빠른 진입점
 
+- **🟢 지금 당장 할 일:** [`04-plan/next-actions.md`](./04-plan/next-actions.md)
 - **프로젝트 이해 → 구현 시작:** [`04-plan/master-plan.md`](./04-plan/master-plan.md)
 - **현재 베이스라인 PRD:** [`01-prd/iteration-3.md`](./01-prd/iteration-3.md)
 - **모듈/클래스 구조:** [`03-design/uml-v1.1.md`](./03-design/uml-v1.1.md)
