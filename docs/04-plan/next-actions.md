@@ -7,32 +7,24 @@
 
 ## 🚨 즉시 (블로킹)
 
-### [ ] 1. GitHub 웹 UI에서 CI 워크플로우 생성
+### [x] 1. GitHub 웹 UI에서 CI 워크플로우 생성 ✅ 2026.05.19 완료
 
-원격 푸시 권한 충돌로 `.github/workflows/ci.yml`은 로컬에서 제거됨(`53a112f`). 동등 워크플로우를 GitHub 웹 UI에서 직접 생성한다.
+원격 푸시 권한 충돌로 `.github/workflows/ci.yml`을 로컬에서 제거(`53a112f`)한 뒤, GitHub 웹 UI에서 동등 워크플로우를 직접 생성. 결과 커밋: `bc98c4e ci: Add CI workflow for linting, testing, and building` (77줄, Toon \<boon10034@gmail.com\>). 로컬에 pull/rebase되어 `.github/workflows/ci.yml` 복원됨.
 
-**진입 경로:** [github.com/GiToon10100011/gameCup](https://github.com/GiToon10100011/gameCup) → **Actions** 탭 → **"set up a workflow yourself"** 또는 **Code → Add file → Create new file** → 경로 `.github/workflows/ci.yml`
-
-**작성할 본문 명세:** [`../06-setup/github-actions.md`](../06-setup/github-actions.md) §4 — 두 잡(`verify`, `hook-verify`)의 단계와 환경 변수가 명세되어 있다. 본 세션에서 작성했던 ci.yml 내용(78줄)도 그대로 붙여넣어도 무방.
-
-**완료 후:** 웹에서 main에 커밋되므로 로컬에서 `git pull --rebase origin main` 실행 후 다음 단계로.
+> 참고: 본 세션에서 작성한 ci.yml과 거의 동일한 내용. 명세는 [`../06-setup/github-actions.md`](../06-setup/github-actions.md) §4.
 
 ---
 
 ### [ ] 2. 로컬 main을 origin/main에 푸시
 
-워크플로우 파일이 제거된 상태에서 푸시.
+남은 로컬 커밋 1개를 푸시한다.
 
 ```bash
 git push origin main
 ```
 
-푸시 대상 3개 커밋:
-- `e028f02` — Husky + (제거된) CI 워크플로우 설정
-- `a8c577a` — 이슈·PR 템플릿
-- `53a112f` — workflows 폴더 제거
-
-> 1번 단계가 먼저 완료되어 원격에 ci.yml이 있다면 `git pull --rebase` 후 푸시한다.
+푸시 대상:
+- `4d2d76b` — `docs(plan): Phase 0 직후 운영 체크리스트 next-actions.md 추가` (+ 본 문서의 후속 갱신 커밋)
 
 ---
 
