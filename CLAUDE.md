@@ -103,9 +103,11 @@
 | 파일명 | kebab-case (예: `tournament-module.ts`는 ❌, `tournamentModule.ts`는 ✅ — 모듈은 camelCase. 컴포넌트는 PascalCase) |
 | 컴포넌트 | PascalCase + 폴더 분류 (`components/search/SearchBar.tsx`) |
 | 모듈/스토어 | camelCase (`searchModule.ts`, `stateStore.ts`) |
-| 타입 | PascalCase, `types/` 폴더 집중 (`Game`, `TournamentPair`, `ApiError`) |
+| 타입 | PascalCase, `types/` 폴더 집중 |
+| **인터페이스** | **`I` + PascalCase** 필수 (예: `ISearchInputProps`, `IGame`, `ITournamentPair`). `type` alias·컴포넌트 명은 영향 없음 |
 | Path alias | `@/*` → `src/*` |
 | 3계층 호출 방향 | Presentation → Business → Data (역방향·건너뛰기 금지) |
+| **블록 주석** | **새로 작성하는 모든 코드는 함수·effect·분기·jsx 섹션·테스트 그룹마다 한국어 주석 필수** (교육·포트폴리오 목적). WHY 우선, WHAT은 자명하지 않을 때만 |
 
 ---
 

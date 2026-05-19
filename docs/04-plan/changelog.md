@@ -26,6 +26,7 @@
 - 기술 근거 [`../07-tech-rationale/README.md`](../07-tech-rationale/README.md) §12 (Husky · lint-staged · GitHub Actions)
 
 ### Changed
+- **인터페이스 `I` 접두사 + 블록 주석 컨벤션 영구 적용** (사용자 영구 원칙, PR #63 리뷰 + 2026.05.20): TypeScript `interface`는 항상 `I` 접두사(예: `ISearchInputProps`), `type`/컴포넌트는 영향 없음. 새 코드 블록(함수·effect·분기·jsx·테스트)마다 한국어 주석 필수(교육·포트폴리오 목적, 보안 우려 없음). `CLAUDE.md` §5·`.claude/agents/code.md`·글로벌 `project-bootstrap`·사용자 메모리(`feedback_interface_i_prefix.md`, `feedback_block_comments_required.md`)에 명문화.
 - **`gh` CLI 우선 + PR/이슈 템플릿 우선 영구 적용** (사용자 영구 지시, 2026.05.20): 이슈·PR 생성·머지·코멘트는 `gh` CLI 1순위(MCP는 fallback). 본문은 `.github/pull_request_template.md`와 `.github/ISSUE_TEMPLATE/*.md` 골격을 우선 따르고 추가 정보 덧붙임. `CLAUDE.md` §9·`.claude/agents/github.md`·글로벌 `project-bootstrap` §9.5와 사용자 메모리(`feedback_gh_cli_preferred.md`, `feedback_use_github_templates.md`)에 명문화.
 - **PR 위계 흐름 영구 적용** (사용자 영구 지시, 2026.05.20): Task PR → Story 브랜치, Story PR → Epic 브랜치, Epic PR → dev. Epic/Story 브랜치는 자식 PR이 모이는 통합 베이스로 코드 작성보다는 머지 후 보완 작업만. `CLAUDE.md` §9·`.claude/agents/{issue-branch,github}.md`·`docs/04-plan/sprint-1-mapping.md`에 명문화, 글로벌 `project-bootstrap` §9.5와 사용자 메모리 `feedback_pr_hierarchy_flow.md`에도 저장.
 - `package.json`: `prepare` 스크립트 추가, `husky` `lint-staged` devDependency 추가, `lint-staged` 설정 블록 추가
