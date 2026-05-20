@@ -33,15 +33,20 @@ export async function measureAsync<T>(
 
   const start = now();
 
+  // 측정값 헬퍼 — 음수 방지(NF-01 계약: durationMs >= 0).
+  // performance.now()는 단조 증가라 음수가 안 나오지만 Date.now() fallback에서는
+  // 시스템 시계 보정으로 시간이 뒤로 이동할 수 있으므로 0 하한 보정. (CodeRabbit 리뷰)
+  const elapsed = (): number => Math.max(0, now() - start);
+
   try {
     // 2) 본 작업 실행 — fn은 async이므로 await로 종료 대기
     const result = await fn();
     // 3) 정상 완료 — durationMs + success=true로 통보
-    onMeasure(now() - start, true);
+    onMeasure(elapsed(), true);
     return result;
   } catch (error) {
     // 4) 실패 — 시간은 여전히 의미가 있다(타임아웃 진단 등). success=false로 통보하고 원본 에러를 그대로 재throw
-    onMeasure(now() - start, false);
+    onMeasure(elapsed(), false);
     throw error;
   }
 }

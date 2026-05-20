@@ -72,4 +72,42 @@ describe("measureAsync (Issue #13)", () => {
     expect(duration).toBeGreaterThanOrEqual(0);
     expect(success).toBe(true);
   });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 4) 음수 보정 — Date.now() fallback에서 시계가 뒤로 이동해도 0 하한
+  // ───────────────────────────────────────────────────────────────────────────
+  it("종료 시점이 시작 시점보다 이전이어도 durationMs는 0으로 보정된다 (CodeRabbit 회귀 방지)", async () => {
+    // 시작 200, 종료 50 → 원시 차이는 -150ms. NF-01 계약(>=0) 위반 방지.
+    let nowCallCount = 0;
+    vi.spyOn(performance, "now").mockImplementation(() => {
+      nowCallCount += 1;
+      return nowCallCount === 1 ? 200 : 50;
+    });
+
+    const onMeasure = vi.fn();
+    await measureAsync(async () => "ok", onMeasure);
+
+    const [duration, success] = onMeasure.mock.calls[0];
+    expect(duration).toBe(0);
+    expect(success).toBe(true);
+  });
+
+  it("실패 경로에서도 시계 역행 시 durationMs는 0으로 보정된다", async () => {
+    let nowCallCount = 0;
+    vi.spyOn(performance, "now").mockImplementation(() => {
+      nowCallCount += 1;
+      return nowCallCount === 1 ? 500 : 100;
+    });
+
+    const onMeasure = vi.fn();
+    await expect(
+      measureAsync(async () => {
+        throw new Error("boom");
+      }, onMeasure),
+    ).rejects.toThrow("boom");
+
+    const [duration, success] = onMeasure.mock.calls[0];
+    expect(duration).toBe(0);
+    expect(success).toBe(false);
+  });
 });
