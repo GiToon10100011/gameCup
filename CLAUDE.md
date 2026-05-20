@@ -162,6 +162,7 @@ npm run e2e              # Playwright (Phase 4 이후)
 - **PR 위계 흐름** — Task PR → **Story 브랜치**로, Story PR → **Epic 브랜치**로, Epic PR → `dev`로 머지. Epic/Story 브랜치는 자식 PR이 모이는 **통합 베이스**이며 직접 코드 작성보다는 자식 머지 후 보완 작업만. PR base 결정은 `github` 에이전트가 `sprint-N-mapping.md`를 보고 자동 매핑한다.
 - **`gh` CLI 우선, MCP는 fallback** — 이슈·PR 운영은 항상 `gh` CLI 1순위. GitHub MCP는 `gh` 미설치/특수 케이스(부트스트랩 일괄 등록 등)에만.
 - **PR·이슈 본문은 `.github/` 템플릿 우선** — `.github/pull_request_template.md`와 `.github/ISSUE_TEMPLATE/*.md` 골격을 따른 뒤 추가 정보(위계·검증·Closes)를 자유롭게 덧붙임.
+- **PR 머지 직후 이슈 수동 close** — GitHub의 `Closes #N` 자동 닫힘은 **PR base가 default branch(main/dev)일 때만** 동작한다. 본 프로젝트는 PR 위계 흐름(Task PR → Story 브랜치)을 사용하므로 Task/Story PR 머지 시 자동 close가 동작하지 않는다. **`github` 에이전트는 PR 머지 직후 본문의 `Closes #N`을 파싱해 `gh issue close <N> --reason completed`로 직접 닫고 사용자에게 보고**한다. `Refs: #N`만 있는 통합 커밋은 닫지 않는다. (상세: `.claude/agents/github.md` §PR 절차 4)
 
 ---
 
