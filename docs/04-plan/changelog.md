@@ -42,6 +42,10 @@
   - `src/lib/externalApiClient.ts`: `RAWG_BASE_URL` 상수를 `NEXT_PUBLIC_RAWG_BASE_URL` env로 분리(미설정 시 공식 호스트 fallback)
   - `src/modules/tournamentModule.ts`: filter/forEach/map 콜백 매개변수 `m` → `match` 명시화
   - `tests/unit/components/search/SearchDropdown.test.tsx`: Vitest/RTL 각 import 심볼·매처 역할을 학습용 주석으로 보강, 신규 props 이름 반영
+- **PR #64 후속 리뷰 반영** (variants 분리, 2026.05.20):
+  - `src/components/search/SearchDropdown.variants.ts` 신규 — `tv()` 정의를 컴포넌트 파일에서 분리(`dropdownVariants` export)
+  - `CLAUDE.md` §5 코딩 컨벤션에 "스타일 variants 분리" 규칙 영구 추가
+  - 사용자 메모리 `feedback_variants_separate_file.md` 신설 — 모든 프로젝트 공통 컨벤션화
 
 ### Deprecated
 - _(없음.)_

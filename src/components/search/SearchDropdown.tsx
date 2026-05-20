@@ -2,9 +2,9 @@
 
 // Next.js 최적화 이미지 컴포넌트 — width/height 명시 + 외부 도메인은 next.config 등록 필요
 import Image from "next/image";
-// tailwind-variants — variant·slots 기반 스타일 모듈화. 4가지 상태에서 공통 외곽을 재사용하기 위해 도입.
-// PR #64 리뷰 피드백("themes 정의 + 동적 스타일링") 반영.
-import { tv } from "tailwind-variants";
+// 스타일 variants — 컴포넌트 파일과 분리해 관리 (PR #64 리뷰 피드백).
+// 분리 이유는 SearchDropdown.variants.ts 파일 상단 주석 참고.
+import { dropdownVariants } from "./SearchDropdown.variants";
 // 도메인 게임 타입 — 검색 결과 한 건 한 건은 IGame으로 표현됨
 import type { IGame } from "@/types/game";
 
@@ -22,35 +22,6 @@ interface ISearchDropdownProps {
   isOpen?: boolean;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 스타일 정의 (tailwind-variants 기반 "themes")
-// ─────────────────────────────────────────────────────────────────────────────
-// slots: 컴포넌트 내부 영역별 클래스 키.
-//   container : 외곽 박스 (4가지 상태 공통 모양 — 둥근 모서리·테두리·스크롤·다크 모드)
-//   message   : 안내 문구용 패딩·텍스트 (로딩/빈 결과 상태에서 사용)
-//   item      : 각 결과 행(<button>) — hover·focus 시각 피드백
-//   thumb     : 썸네일 또는 placeholder 공통 크기(48×48)
-//   name      : 게임명 텍스트
-// variants.state: 닫힘은 null 반환이라 변형 대상이 아니지만, 로딩/빈/리스트 3종을 의도적으로 분기.
-const dropdown = tv({
-  slots: {
-    container:
-      "mt-2 max-h-72 overflow-y-auto rounded-lg border border-neutral-200 bg-white shadow-md dark:border-neutral-800 dark:bg-neutral-900",
-    message: "px-4 py-3 text-sm text-neutral-500",
-    item:
-      "flex w-full items-center gap-3 px-3 py-2 text-left transition hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none dark:hover:bg-neutral-800 dark:focus:bg-neutral-800",
-    thumb: "h-12 w-12 flex-none rounded",
-    name: "text-sm font-medium text-neutral-800 dark:text-neutral-100",
-  },
-  variants: {
-    // 썸네일이 있을 때만 object-cover, 없을 때는 회색 placeholder 배경.
-    thumbKind: {
-      image: { thumb: "object-cover" },
-      placeholder: { thumb: "bg-neutral-200 dark:bg-neutral-800" },
-    },
-  },
-});
-
 /**
  * 검색 결과 드롭다운.
  * - 닫힘 / 로딩 중 / 빈 결과 / 결과 있음 4가지 상태를 분리해 렌더링
@@ -67,7 +38,7 @@ export function SearchDropdown({
   if (!isOpen) return null;
 
   // 2) slot 별 클래스 사전 계산 — JSX 가독성 확보 + 재계산 비용 절감
-  const { container, message, item, thumb, name } = dropdown();
+  const { container, message, item, thumb, name } = dropdownVariants();
 
   // 3) 로딩 상태 — aria-busy로 보조 기술에 진행 중임을 알린다
   if (isLoading) {
