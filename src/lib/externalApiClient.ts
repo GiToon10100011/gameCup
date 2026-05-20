@@ -3,9 +3,12 @@
 
 import type { IApiError, IGame } from "@/types/game";
 
-// RAWG API의 베이스 URL. 환경 변수가 아닌 상수로 두는 이유: 호스트가 바뀔 일이 거의 없고
-// 환경 변수에 노출시키면 의도치 않게 다른 도메인을 부르는 사고가 생길 수 있다.
-const RAWG_BASE_URL = "https://api.rawg.io/api";
+// RAWG API의 베이스 URL.
+// PR #64 리뷰 피드백("BASE_URL은 환경변수로 정의하여 전역적으로 재사용") 반영하여 env 우선·기본값 fallback 패턴.
+// - 환경별(개발/스테이징/프로덕션) 또는 프록시 도입 시 코드 변경 없이 URL 교체 가능
+// - 환경 변수 미설정 시 공식 RAWG 호스트로 안전 폴백
+const RAWG_BASE_URL =
+  process.env.NEXT_PUBLIC_RAWG_BASE_URL ?? "https://api.rawg.io/api";
 
 // RAWG가 반환하는 원본 게임 객체의 부분 타입.
 // 우리는 id/name/배경 이미지만 필요하므로 그 외 필드는 정의하지 않는다.

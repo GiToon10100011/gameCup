@@ -25,7 +25,10 @@ export function startTournament(): void {
   store.setRoundState(1, matches);
 
   // 4) 부전승 페어는 사용자 입력 없이 자동 진출 (F-09)
-  matches.filter((m) => m.isBye && m.winner).forEach((m) => store.pushToNextRound(m.winner as IGame));
+  // 변수명은 의미를 드러내도록 match로 명시 (PR #64 리뷰: 모호한 단문자 변수 지양)
+  matches
+    .filter((match) => match.isBye && match.winner)
+    .forEach((match) => store.pushToNextRound(match.winner as IGame));
 }
 
 /**
@@ -38,11 +41,12 @@ export function selectWinner(pair: ITournamentPair, choice: IGame): void {
   if (!isMember) return;
 
   // 2) 승자를 다음 라운드 큐에 추가하고 현재 페어의 winner 필드를 갱신
+  // map 콜백 매개변수도 match로 명시 (단문자 m 지양)
   const store = useStateStore.getState();
   store.pushToNextRound(choice);
   const updated = store
     .getCurrentMatches()
-    .map((m) => (m === pair ? { ...m, winner: choice } : m));
+    .map((match) => (match === pair ? { ...match, winner: choice } : match));
   store.setRoundState(store.getCandidates().length > 0 ? getCurrentRound() : 1, updated);
 }
 
@@ -69,8 +73,10 @@ export function advanceRound(): void {
   const matches = buildPairs(shuffled);
   store.setRoundState(getCurrentRound() + 1, matches);
 
-  // 4) 부전승 자동 진출
-  matches.filter((m) => m.isBye && m.winner).forEach((m) => store.pushToNextRound(m.winner as IGame));
+  // 4) 부전승 자동 진출 — 매개변수는 match로 명시
+  matches
+    .filter((match) => match.isBye && match.winner)
+    .forEach((match) => store.pushToNextRound(match.winner as IGame));
 }
 
 // 토너먼트가 끝났는지 (우승자 확정 여부) 조회. UI 화면 전환 가드로 사용.
