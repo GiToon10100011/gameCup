@@ -46,6 +46,10 @@
   - `src/components/search/SearchDropdown.variants.ts` 신규 — `tv()` 정의를 컴포넌트 파일에서 분리(`dropdownVariants` export)
   - `CLAUDE.md` §5 코딩 컨벤션에 "스타일 variants 분리" 규칙 영구 추가
   - 사용자 메모리 `feedback_variants_separate_file.md` 신설 — 모든 프로젝트 공통 컨벤션화
+- **Task #11 — `searchGames()` 단위 테스트** (2026.05.20):
+  - `tests/unit/lib/externalApiClient.test.ts` 신규 — `fetchGames` 5건 (정상 정규화 / null thumbnail fallback / HTTP 500 → ExternalApiError / API 키 누락 즉시 throw / BASE_URL override)
+  - `tests/unit/searchModule.test.ts` 신규 — `validateQuery`·`search` 8건 (빈/공백 검색어 차단 / 캐시 적중 NF-05 / 캐시 미스 → fetch + 저장 / 동일 검색어 재호출 시 외부 호출 0)
+  - 외형(`fetchGames`/`search`)은 이미 UML v1.1과 일치하는 상태로 존재했으며, 본 Task에서 동작 검증을 단위 테스트로 보강
 
 ### Deprecated
 - _(없음.)_
