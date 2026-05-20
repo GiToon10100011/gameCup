@@ -163,7 +163,7 @@ npm run e2e              # Playwright (Phase 4 이후)
 - **`gh` CLI 우선, MCP는 fallback** — 이슈·PR 운영은 항상 `gh` CLI 1순위. GitHub MCP는 `gh` 미설치/특수 케이스(부트스트랩 일괄 등록 등)에만.
 - **PR·이슈 본문은 `.github/` 템플릿 우선** — `.github/pull_request_template.md`와 `.github/ISSUE_TEMPLATE/*.md` 골격을 따른 뒤 추가 정보(위계·검증·Closes)를 자유롭게 덧붙임.
 - **PR 머지 직후 이슈 수동 close** — GitHub의 `Closes #N` 자동 닫힘은 **PR base가 default branch(main/dev)일 때만** 동작한다. 본 프로젝트는 PR 위계 흐름(Task PR → Story 브랜치)을 사용하므로 Task/Story PR 머지 시 자동 close가 동작하지 않는다. **`github` 에이전트는 PR 머지 직후 본문의 `Closes #N`을 파싱해 `gh issue close <N> --reason completed`로 직접 닫고 사용자에게 보고**한다. `Refs: #N`만 있는 통합 커밋은 닫지 않는다. (상세: `.claude/agents/github.md` §PR 절차 4)
-- **머지 완료 하위 브랜치 자동 정리** — PR이 머지된 직후 `github` 에이전트는 head 브랜치를 **원격·로컬 모두 삭제**하고 사용자에게 보고한다 (`git push origin --delete <branch>` + `git branch -d <branch>`). 사용자가 명시적으로 보존 요청한 브랜치는 예외. Epic/Story 통합 베이스 브랜치는 자식 PR이 모두 머지된 뒤(즉 통합 PR 머지 시점)에만 삭제. (사용자 영구 지시 2026.05.20)
+- **머지 완료 하위 브랜치 자동 정리** — PR이 머지된 직후 `github` 에이전트는 head 브랜치를 **원격·로컬 모두 삭제**하고 사용자에게 보고한다 (`git push origin --delete <branch>` + `git branch -d <branch>`). 사용자가 명시적으로 보존 요청한 브랜치는 예외. 브랜치 종류별 삭제 타이밍: Task 브랜치는 Story 브랜치로 머지된 직후, Story 브랜치는 Epic 브랜치로 머지된 직후, Epic 브랜치는 `dev`로 머지된 직후 삭제. (사용자 영구 지시 2026.05.20)
 - **protected ruleset 브랜치 직접 커밋 금지** — `main`, `dev` 등 protected ruleset이 적용된 브랜치에는 **직접 커밋·푸시 금지**. 운영/문서 변경이라도 다음 절차를 따른다: ① `gh issue create`로 이슈 생성(템플릿 사용) → ② 이슈 번호 기반 브랜치 분기(`<type>/<N>-<slug>`, dev에서 분기) → ③ 해당 브랜치에서 작업·커밋·푸시 → ④ `gh pr create --base dev` → ⑤ 사용자 검사 후 머지. 이슈 #69가 본 정책 도입 시점 첫 사례. (사용자 영구 지시 2026.05.20, 모든 프로젝트 공통)
 
 ---
