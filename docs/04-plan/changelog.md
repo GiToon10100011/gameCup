@@ -50,6 +50,9 @@
   - `tests/unit/lib/externalApiClient.test.ts` 신규 — `fetchGames` 5건 (정상 정규화 / null thumbnail fallback / HTTP 500 → ExternalApiError / API 키 누락 즉시 throw / BASE_URL override)
   - `tests/unit/searchModule.test.ts` 신규 — `validateQuery`·`search` 8건 (빈/공백 검색어 차단 / 캐시 적중 NF-05 / 캐시 미스 → fetch + 저장 / 동일 검색어 재호출 시 외부 호출 0)
   - 외형(`fetchGames`/`search`)은 이미 UML v1.1과 일치하는 상태로 존재했으며, 본 Task에서 동작 검증을 단위 테스트로 보강
+- **Task #12 — 세션 내 검색 결과 캐싱 (Map 기반)** (2026.05.20):
+  - `tests/unit/stateStore.cache.test.ts` 신규 (6 tests) — store 레벨 캐시 동작 직접 검증: 초기 undefined / 저장-조회 라운드트립 / 검색어별 격리 / setCache가 새 Map 인스턴스 생성(React 리렌더 트리거) / 동일 검색어 덮어쓰기 / resetAll 후 캐시 비움 + 재사용 가능
+  - 캐시 로직 자체(`searchCache: Map<string, IGame[]>` + `getCache`/`setCache`)는 이미 UML v1.1 §StateStore와 일치하게 구현되어 있었으며, 본 Task에서 store 레벨 동작 보증을 추가
 
 ### Deprecated
 - _(없음.)_
