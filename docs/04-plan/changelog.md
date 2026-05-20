@@ -10,6 +10,7 @@
 코드 작업 중 발견된 PRD/설계 이탈 사항을 누적 기록한다. 충분히 쌓이면 [`../05-process/iteration-template.md`](../05-process/iteration-template.md)를 복사해 `01-prd/iteration-4.md` 등을 분기 생성한다.
 
 ### Added
+- **`tailwind-variants` + `tailwind-merge` 도입** (PR #64 리뷰 피드백): SearchDropdown의 4가지 상태 공통 스타일을 slots/variants로 모듈화. 기술 근거 [`../07-tech-rationale/README.md`](../07-tech-rationale/README.md) §3에 누적, `.env.local.example`에 RAWG BASE_URL override 변수(`NEXT_PUBLIC_RAWG_BASE_URL`) 추가.
 - **글로벌 에이전트 `project-bootstrap`** 신규 — 모든 신규 프로젝트의 PRD→이슈 분해·GitHub MCP 등록·docs 구조 자동 부트스트랩 담당. 위치: `~/.claude/agents/project-bootstrap.md` (사용자 레벨, 모든 프로젝트 공용). **프로필 시스템(mini/lite/standard/full)** 도입 — default `lite`, 매번 확인.
 - **글로벌 에이전트 `docs-builder`** 신규 — PRD/아이디어 기반 후속 문서(API 명세·용어집·ADR·테스트 계획·페르소나·DB 스키마·모듈 설계·아키텍처 문서 등) 단계적 확장. 전담 영역(PRD/UML/UC)은 기존 에이전트에 위임 안내. 위치: `~/.claude/agents/docs-builder.md`
 - **`docs/04-plan/issues.md`** — 루트의 `issues.md`를 docs 트리 안으로 이동·정리 (청사진 위치 표준화)
@@ -36,6 +37,15 @@
 - `CLAUDE.md` — 글로벌 `project-bootstrap`·`docs-builder` 안내 추가, 위임 결정 트리에 신규 프로젝트 초기화·문서 확장 라우팅 추가
 - `.claude/agents/issue-branch.md` · `.claude/agents/github.md` · `docs/04-plan/sprint-1-mapping.md` — `issues.md` 참조 경로를 `docs/04-plan/issues.md`로 갱신
 - `docs/README.md` — issues.md 새 위치 + 이슈 청사진 빠른 진입점 추가
+- **PR #64 리뷰 반영** (SearchDropdown, 2026.05.20):
+  - `src/components/search/SearchDropdown.tsx`: props `games` → `gameArray`(복수형 대신 자료형 명시), `tailwind-variants` slots/variants로 컨테이너·메시지·항목·썸네일·이름 5개 slot 추출
+  - `src/lib/externalApiClient.ts`: `RAWG_BASE_URL` 상수를 `NEXT_PUBLIC_RAWG_BASE_URL` env로 분리(미설정 시 공식 호스트 fallback)
+  - `src/modules/tournamentModule.ts`: filter/forEach/map 콜백 매개변수 `m` → `match` 명시화
+  - `tests/unit/components/search/SearchDropdown.test.tsx`: Vitest/RTL 각 import 심볼·매처 역할을 학습용 주석으로 보강, 신규 props 이름 반영
+- **PR #64 후속 리뷰 반영** (variants 분리, 2026.05.20):
+  - `src/components/search/SearchDropdown.variants.ts` 신규 — `tv()` 정의를 컴포넌트 파일에서 분리(`dropdownVariants` export)
+  - `CLAUDE.md` §5 코딩 컨벤션에 "스타일 variants 분리" 규칙 영구 추가
+  - 사용자 메모리 `feedback_variants_separate_file.md` 신설 — 모든 프로젝트 공통 컨벤션화
 
 ### Deprecated
 - _(없음.)_

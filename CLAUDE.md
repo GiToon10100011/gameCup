@@ -108,6 +108,7 @@
 | Path alias | `@/*` → `src/*` |
 | 3계층 호출 방향 | Presentation → Business → Data (역방향·건너뛰기 금지) |
 | **블록 주석** | **새로 작성하는 모든 코드는 함수·effect·분기·jsx 섹션·테스트 그룹마다 한국어 주석 필수** (교육·포트폴리오 목적). WHY 우선, WHAT은 자명하지 않을 때만 |
+| **스타일 variants 분리** | `tailwind-variants` 정의는 컴포넌트 파일에 인라인 작성 금지. 같은 폴더에 `<ComponentName>.variants.ts`로 분리해 `export const <name>Variants = tv({ slots, variants })` 형태로 내보내고, 컴포넌트는 `import { <name>Variants } from "./<ComponentName>.variants"`로 사용. 재사용·시각 회귀 분리·Storybook 도입 대비 (PR #64 리뷰 영구 반영) |
 
 ---
 
