@@ -96,9 +96,11 @@ describe("externalApiClient.fetchGames (Issue #11)", () => {
 
     const { fetchGames, ExternalApiError } = await import("@/lib/externalApiClient");
 
-    // rejects matcher로 비동기 throw 검증
-    await expect(fetchGames("zelda")).rejects.toBeInstanceOf(ExternalApiError);
-    await expect(fetchGames("zelda")).rejects.toMatchObject({ statusCode: 500 });
+    // promise를 단일 변수에 잡아 두 assertion이 같은 실행을 검증하도록 한다.
+    // 두 번 호출하면 fetch가 두 번 발생해 가짜 side effect가 중복으로 일어남 → CodeRabbit 리뷰 반영.
+    const request = fetchGames("zelda");
+    await expect(request).rejects.toBeInstanceOf(ExternalApiError);
+    await expect(request).rejects.toMatchObject({ statusCode: 500 });
   });
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -110,8 +112,10 @@ describe("externalApiClient.fetchGames (Issue #11)", () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
 
     const { fetchGames, ExternalApiError } = await import("@/lib/externalApiClient");
-    await expect(fetchGames("zelda")).rejects.toBeInstanceOf(ExternalApiError);
-    await expect(fetchGames("zelda")).rejects.toMatchObject({ statusCode: 0 });
+    // 동일 promise를 두 assertion에서 재사용 — CodeRabbit 리뷰 반영.
+    const request = fetchGames("zelda");
+    await expect(request).rejects.toBeInstanceOf(ExternalApiError);
+    await expect(request).rejects.toMatchObject({ statusCode: 0 });
 
     // fetch 자체가 호출되지 않아야 함 — 외부 호출 비용을 막는 1차 가드
     expect(fetchSpy).not.toHaveBeenCalled();
