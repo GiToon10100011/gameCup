@@ -166,6 +166,21 @@ model: sonnet
 
 > **gh CLI 우선 원칙:** `gh pr create`가 작동하지 않을 때만(미설치/권한 등) GitHub MCP `mcp__github__create_pull_request`로 fallback.
 
+### 3.5. Protected ruleset 브랜치 직접 커밋 금지 (필수)
+
+`main`, `dev` 등 GitHub Branch protection / Ruleset이 적용된 브랜치에는 **로컬 커밋·푸시를 절대 시도하지 않는다.** 운영/문서 변경(컨벤션 갱신·CLAUDE.md 수정 등)이 필요해도 같은 절차를 따른다:
+
+1. `gh issue create --title "[ops] ..." --label "🔧 Chore" --body-file <template-filled>.md`로 **이슈 먼저 생성**
+2. `git checkout dev && git pull origin dev --ff-only`로 최신화
+3. `git checkout -b <type>/<N>-<slug>`로 새 브랜치 분기 (`<type>`은 `chore`/`docs`/`fix`/`refactor` 등 라벨 매핑)
+4. 변경 작업 → 커밋(prepare-commit-msg 훅이 `(#N)` 자동 부착) → `git push -u origin <branch>`
+5. `gh pr create --base dev --head <branch>` (위계 무시 — 운영 변경은 dev 직접 PR)
+6. 사용자 검사 후 머지 + 이슈 자동 close + 브랜치 자동 정리
+
+**위반 사례 회수:** 만약 실수로 dev에 직접 커밋했다면 즉시 사용자에게 보고하고 revert/cherry-pick으로 새 브랜치에 재구성한 뒤 PR 절차를 다시 밟는다.
+
+---
+
 ### 4. PR 머지 직후 이슈 자동 close (필수)
 
 **중요:** GitHub의 `Closes #N` 키워드는 **PR base가 default branch(main/dev)일 때만** 자동으로 이슈를 닫는다. 본 프로젝트는 PR 위계 흐름(Task PR → Story 브랜치, Story PR → Epic 브랜치)을 사용하므로 Task/Story PR 머지 시 **자동 close가 동작하지 않는다.** 따라서 머지 직후 본 에이전트가 직접 닫는다.
@@ -179,6 +194,26 @@ model: sonnet
 4. 닫은 이슈 번호를 사용자에게 보고
 
 **예외:** `Refs: #N`만 있고 `Closes`가 없는 통합 커밋의 경우 닫지 않는다. `Closes`가 명시된 이슈만 닫는다.
+
+---
+
+### 5. PR 머지 직후 하위 브랜치 자동 정리 (필수)
+
+머지 직후 head 브랜치를 **원격·로컬 모두 삭제**하고 사용자에게 보고한다.
+
+```bash
+HEAD_BRANCH=$(gh pr view <PR#> --json headRefName --jq .headRefName)
+git push origin --delete "$HEAD_BRANCH"
+# 로컬에 해당 브랜치가 체크아웃되어 있다면 먼저 다른 브랜치로 이동
+git branch -d "$HEAD_BRANCH" 2>/dev/null || true
+git fetch --prune
+```
+
+**예외:**
+- 사용자가 명시적으로 "보존해줘"라고 한 브랜치
+- **Epic/Story 통합 베이스 브랜치는 자식 PR이 모두 머지된 직후가 아니라, 본 통합 PR이 dev로 머지된 직후에만 삭제**
+
+**보고 형식:** "PR #<N> 머지 완료 → 이슈 #<M> close, 브랜치 `<head>` 원격·로컬 삭제."
 
 ### 3. Epic/Story 브랜치 자체에서의 작업
 
