@@ -58,6 +58,11 @@
   - `CLAUDE.md` §9 안전 가드레일 + `.claude/agents/github.md` §PR 절차 4에 명문화
   - 사용자 메모리 `feedback_pr_merge_auto_close.md` 신설 (모든 프로젝트 공통)
   - 밀려 있던 #9, #10, #11 수동 close 완료
+- **Task #13 — 검색 응답 시간 측정 (NF-01)** (2026.05.20):
+  - `src/utils/measureAsync.ts` 신규 — `measureAsync(fn, onMeasure)` 범용 비동기 시간 측정 유틸 (성공/실패 모두 측정, `performance.now()` 우선, `Date.now()` fallback)
+  - `src/modules/searchModule.ts` — `SEARCH_RESPONSE_TIME_BUDGET_MS = 1000` 상수, 모듈 내부 `lastSearchDurationMs` + `getLastSearchDurationMs()` getter, `resetSearchDurationMeasurement()`, search() 캐시 미스 분기에서 `measureAsync`로 응답 시간 측정. 임계치(1000ms) 초과 시 `console.warn`, 그 이하는 `console.debug` (production 환경에서는 로깅 생략)
+  - `tests/unit/measureAsync.test.ts` 신규 (3 tests) — 성공/실패/0ms 케이스
+  - `tests/unit/searchModule.test.ts` 확장 (+5 tests) — 임계치 상수 / 초기 null / 캐시 미스 시 측정 / NF-01 위반 경고 / 캐시 적중 시 측정 안 함 / 실패 시도 진단용 측정 보존
 
 ### Deprecated
 - _(없음.)_

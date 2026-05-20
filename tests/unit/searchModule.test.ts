@@ -17,7 +17,13 @@ vi.mock("@/lib/externalApiClient", () => ({
 }));
 
 // 위 mock 이후에 import해야 mock된 함수가 주입된다.
-import { search, validateQuery } from "@/modules/searchModule";
+import {
+  search,
+  validateQuery,
+  getLastSearchDurationMs,
+  resetSearchDurationMeasurement,
+  SEARCH_RESPONSE_TIME_BUDGET_MS,
+} from "@/modules/searchModule";
 import { fetchGames } from "@/lib/externalApiClient";
 import { useStateStore } from "@/store/stateStore";
 
@@ -31,11 +37,15 @@ describe("searchModule (Issue #11)", () => {
     useStateStore.getState().resetAll();
     // mock 함수의 호출 기록·구현 초기화
     mockedFetchGames.mockReset();
+    // 응답 시간 측정값도 격리 — 이전 테스트의 측정이 새지 않도록
+    resetSearchDurationMeasurement();
   });
 
   afterEach(() => {
     // 다음 테스트의 mock에 영향이 가지 않도록 정리
     vi.clearAllMocks();
+    // performance.now mock도 함께 해제
+    vi.restoreAllMocks();
   });
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -130,6 +140,98 @@ describe("searchModule (Issue #11)", () => {
 
       expect(secondResult).toEqual(fakeResult);
       expect(mockedFetchGames).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 5) 응답 시간 측정 (Issue #13, NF-01)
+  // ───────────────────────────────────────────────────────────────────────────
+  describe("search — 응답 시간 측정 (Issue #13, NF-01)", () => {
+    it("NF-01 임계치는 1000ms로 정의되어 있다", () => {
+      // 매직 넘버 회귀 방지 — 임계치 상수가 의도된 값과 일치하는지 보증
+      expect(SEARCH_RESPONSE_TIME_BUDGET_MS).toBe(1000);
+    });
+
+    it("초기 상태에서 getLastSearchDurationMs는 null이다", () => {
+      // 한 번도 search 호출 안 했거나 reset 직후 — 측정값이 없어야 함
+      expect(getLastSearchDurationMs()).toBeNull();
+    });
+
+    it("캐시 미스 시 응답 시간이 기록된다 (NF-01 내 시나리오)", async () => {
+      // performance.now를 가짜로 — 시작 100, 종료 350 → 측정값 250ms (1초 미만, NF-01 충족)
+      let nowCallCount = 0;
+      vi.spyOn(performance, "now").mockImplementation(() => {
+        nowCallCount += 1;
+        return nowCallCount === 1 ? 100 : 350;
+      });
+
+      mockedFetchGames.mockResolvedValueOnce([
+        { id: "1", name: "G", thumbnailUrl: "" },
+      ]);
+
+      await search("zelda");
+
+      // 측정값이 임계치 이내이고 정확히 250ms로 기록
+      const duration = getLastSearchDurationMs();
+      expect(duration).not.toBeNull();
+      expect(duration).toBe(250);
+      expect(duration!).toBeLessThan(SEARCH_RESPONSE_TIME_BUDGET_MS);
+    });
+
+    it("응답 시간이 1초를 초과하면 NF-01 위반 경고를 출력한다", async () => {
+      // performance.now — 시작 0, 종료 1500 → 측정값 1500ms (NF-01 임계 초과)
+      let nowCallCount = 0;
+      vi.spyOn(performance, "now").mockImplementation(() => {
+        nowCallCount += 1;
+        return nowCallCount === 1 ? 0 : 1500;
+      });
+
+      // console.warn을 spy로 잡아 호출 여부·메시지 검증
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      mockedFetchGames.mockResolvedValueOnce([]);
+      await search("zelda");
+
+      // 임계치 초과 — 측정값 보존 + 경고 호출 + 메시지에 측정값 포함
+      expect(getLastSearchDurationMs()).toBe(1500);
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy.mock.calls[0][0]).toContain("NF-01 위반");
+      expect(warnSpy.mock.calls[0][0]).toContain("1500");
+    });
+
+    it("캐시 적중 시는 측정이 일어나지 않는다 (외부 호출 없음)", async () => {
+      // 사전 캐시 주입
+      useStateStore.getState().setCache("zelda", [
+        { id: "1", name: "Cached", thumbnailUrl: "" },
+      ]);
+      // measureAsync가 호출됐는지 확인하기 위해 performance.now spy 등록
+      const nowSpy = vi.spyOn(performance, "now");
+
+      await search("zelda");
+
+      // 캐시 적중 분기는 measureAsync를 거치지 않으므로 performance.now가 호출되지 않아야 함
+      expect(nowSpy).not.toHaveBeenCalled();
+      // 측정값도 여전히 초기 null 상태
+      expect(getLastSearchDurationMs()).toBeNull();
+    });
+
+    it("fetchGames가 실패해도 응답 시간은 기록된다 (타임아웃 진단)", async () => {
+      let nowCallCount = 0;
+      vi.spyOn(performance, "now").mockImplementation(() => {
+        nowCallCount += 1;
+        return nowCallCount === 1 ? 200 : 800;
+      });
+      // console.warn은 비-임계 케이스이므로 호출되지 않지만 spy는 등록해 둠
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      const boom = new Error("RAWG down");
+      mockedFetchGames.mockRejectedValueOnce(boom);
+
+      // 검색이 실패해도 측정값은 보존되어야 함 — 호출자가 진단할 수 있도록
+      await expect(search("zelda")).rejects.toBe(boom);
+
+      // 600ms로 정확히 기록 + 임계치 미만
+      expect(getLastSearchDurationMs()).toBe(600);
     });
   });
 });
