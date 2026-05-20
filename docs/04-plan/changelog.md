@@ -36,6 +36,11 @@
 - `CLAUDE.md` — 글로벌 `project-bootstrap`·`docs-builder` 안내 추가, 위임 결정 트리에 신규 프로젝트 초기화·문서 확장 라우팅 추가
 - `.claude/agents/issue-branch.md` · `.claude/agents/github.md` · `docs/04-plan/sprint-1-mapping.md` — `issues.md` 참조 경로를 `docs/04-plan/issues.md`로 갱신
 - `docs/README.md` — issues.md 새 위치 + 이슈 청사진 빠른 진입점 추가
+- **PR 머지 후 이슈 자동 close 컨벤션 영구화** (사용자 영구 지시, 2026.05.20):
+  - `Closes #N` 자동 닫힘은 PR base가 default branch일 때만 동작 → 본 프로젝트의 PR 위계 흐름(Task PR → Story 브랜치)에서는 자동 close 미동작. `github` 에이전트가 머지 직후 본문의 `Closes` 토큰을 파싱해 `gh issue close <N> --reason completed`로 직접 닫고 사용자에게 보고
+  - `CLAUDE.md` §9 안전 가드레일 + `.claude/agents/github.md` §PR 절차 4에 명문화
+  - 사용자 메모리 `feedback_pr_merge_auto_close.md` 신설 (모든 프로젝트 공통)
+  - 밀려 있던 #9, #10, #11 수동 close 완료
 
 ### Deprecated
 - _(없음.)_

@@ -166,6 +166,20 @@ model: sonnet
 
 > **gh CLI 우선 원칙:** `gh pr create`가 작동하지 않을 때만(미설치/권한 등) GitHub MCP `mcp__github__create_pull_request`로 fallback.
 
+### 4. PR 머지 직후 이슈 자동 close (필수)
+
+**중요:** GitHub의 `Closes #N` 키워드는 **PR base가 default branch(main/dev)일 때만** 자동으로 이슈를 닫는다. 본 프로젝트는 PR 위계 흐름(Task PR → Story 브랜치, Story PR → Epic 브랜치)을 사용하므로 Task/Story PR 머지 시 **자동 close가 동작하지 않는다.** 따라서 머지 직후 본 에이전트가 직접 닫는다.
+
+머지 직후 절차:
+
+1. PR 본문에서 `Closes #N` / `Fixes #N` / `Refs: #N` 토큰을 파싱해 관련 이슈 번호 추출
+   - `gh pr view <PR#> --json body --jq .body | grep -ioE '(closes|fixes|resolves) #[0-9]+'`
+2. 각 이슈에 대해 `gh issue close <N> --reason completed --comment "PR #<PR#> 머지로 완료. base가 통합 베이스이므로 자동 close 미동작 → 수동 close."` 실행
+3. PR base가 `dev`(default branch)인 경우 자동 close 동작하므로 스킵 가능. 단, 검증을 위해 `gh issue view <N> --json state`로 closed 여부 확인하고, 여전히 open이면 수동 close.
+4. 닫은 이슈 번호를 사용자에게 보고
+
+**예외:** `Refs: #N`만 있고 `Closes`가 없는 통합 커밋의 경우 닫지 않는다. `Closes`가 명시된 이슈만 닫는다.
+
 ### 3. Epic/Story 브랜치 자체에서의 작업
 
 Epic·Story 브랜치는 통합 베이스이므로 **자식 PR이 모두 머지된 뒤에만** 추가 커밋이 들어간다. 자식 PR이 모두 머지되면:
