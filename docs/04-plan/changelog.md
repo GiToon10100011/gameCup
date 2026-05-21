@@ -48,6 +48,11 @@
   - `.claude/agents/github.md` §3.5 (protected 브랜치 흐름) + §5 (브랜치 자동 정리) 신설
   - 사용자 메모리 `feedback_merge_then_delete_branch.md` · `feedback_protected_branch_flow.md` 신설 (모든 프로젝트 공통)
   - Sprint 1 누적 머지 브랜치 5건 정리: `feat/9`, `feat/10`, `feat/11`, `feat/12`, `chore/ops-auto-close-convention` (원격·로컬 모두 삭제)
+- **"다음 작업 진행" 신호 시 OPEN PR 머지 선행 정책 영구화** (사용자 영구 지시 2026.05.21, 이슈 #72):
+  - 사용자가 "다음 작업 진행", "이어서 진행" 같은 다음 Task 착수 신호를 보내면 즉시 새 Task에 들어가지 않고, **OPEN PR 전체를 먼저 보고 → 리뷰 반영/머지/close 처리 → 모두 정리된 뒤** 다음 Task 시작
+  - `CLAUDE.md` §9 안전 가드레일에 본 정책 추가
+  - `.claude/agents/github.md` §3.0 신설 — OPEN PR 우선 처리 5단계 절차 (gh pr list 조회 → 리뷰/머지 상태 정리 → 사용자 결정 → 처리 → 정리 후 Task 착수)
+  - 사용자 메모리 `feedback_merge_open_pr_before_next.md` 신설 (모든 프로젝트 공통)
 
 ### Deprecated
 - _(없음.)_
