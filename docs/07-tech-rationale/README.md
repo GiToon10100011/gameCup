@@ -265,6 +265,7 @@
 ---
 
 ### tailwind-variants
+
 - **도입 시점:** Iteration 3 / 2026.05.20 (Sprint 1, Task #10 PR 리뷰 피드백)
 - **분류:** Styling (Variant-based utility)
 - **선택 이유:**

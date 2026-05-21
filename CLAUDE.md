@@ -100,7 +100,7 @@
 
 | 항목 | 규칙 |
 | --- | --- |
-| 파일명 | kebab-case (예: `tournament-module.ts`는 ❌, `tournamentModule.ts`는 ✅ — 모듈은 camelCase. 컴포넌트는 PascalCase) |
+| 파일명 | 카테고리별로 다름. 모듈·스토어·훅·유틸은 **camelCase** (`searchModule.ts`, `useDebounce.ts`), 컴포넌트는 **PascalCase** (`SearchInput.tsx`), 문서·설정은 **kebab-case** (`iteration-3.md`, `next.config.mjs`). 하나의 규칙으로 강제하지 않고 카테고리별 관례를 따른다. |
 | 컴포넌트 | PascalCase + 폴더 분류 (`components/search/SearchBar.tsx`) |
 | 모듈/스토어 | camelCase (`searchModule.ts`, `stateStore.ts`) |
 | 타입 | PascalCase, `types/` 폴더 집중 |

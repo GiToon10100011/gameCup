@@ -43,7 +43,7 @@ model: sonnet
 ### 자동 부착 (훅 처리)
 
 - 위치: `.husky/prepare-commit-msg`
-- 작동: 브랜치명이 `<type>/<number>-<slug>` 패턴이고 메시지에 `#N` 토큰이 없으면 제목 끝에 ` (#N)` 부착
+- 작동: 브랜치명이 `<type>/<number>-<slug>` 패턴이고 메시지에 `#N` 토큰이 없으면 제목 끝에 `(#N)` 부착
 - 스킵: 통합 브랜치(`main`/`master`/`dev`/`develop`/`release/*`), merge/squash/fixup/Revert 커밋, 이미 `#N` 포함된 메시지
 
 ### 본인(`github` 에이전트)이 메시지를 작성할 때

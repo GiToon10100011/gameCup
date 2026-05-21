@@ -38,15 +38,34 @@ export async function measureAsync<T>(
   // 시스템 시계 보정으로 시간이 뒤로 이동할 수 있으므로 0 하한 보정. (CodeRabbit 리뷰)
   const elapsed = (): number => Math.max(0, now() - start);
 
+  /**
+   * onMeasure 콜백을 안전하게 호출 — PR #74 리뷰 반영.
+   * 측정 콜백이 throw해도 fn의 원래 성공/실패 의미가 오염되지 않도록 try/catch로 격리.
+   * 콜백 자체의 예외는 호출자 흐름에 무관하므로 console.warn으로만 알리고 삼킨다.
+   */
+  const safeMeasure = (durationMs: number, success: boolean): void => {
+    try {
+      onMeasure(durationMs, success);
+    } catch (callbackError) {
+      if (process.env.NODE_ENV !== "production") {
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[measureAsync] onMeasure callback threw — measurement reported but error swallowed`,
+          callbackError,
+        );
+      }
+    }
+  };
+
   try {
-    // 2) 본 작업 실행 — fn은 async이므로 await로 종료 대기
+    /* 2) 본 작업 실행 — fn은 async이므로 await로 종료 대기 */
     const result = await fn();
-    // 3) 정상 완료 — durationMs + success=true로 통보
-    onMeasure(elapsed(), true);
+    /* 3) 정상 완료 — durationMs + success=true로 통보 */
+    safeMeasure(elapsed(), true);
     return result;
   } catch (error) {
-    // 4) 실패 — 시간은 여전히 의미가 있다(타임아웃 진단 등). success=false로 통보하고 원본 에러를 그대로 재throw
-    onMeasure(elapsed(), false);
+    /* 4) 실패 — 시간은 여전히 의미가 있다(타임아웃 진단 등). 콜백 실패와 무관하게 원본 에러 재throw */
+    safeMeasure(elapsed(), false);
     throw error;
   }
 }

@@ -63,6 +63,19 @@
   - `src/modules/searchModule.ts` — `SEARCH_RESPONSE_TIME_BUDGET_MS = 1000` 상수, 모듈 내부 `lastSearchDurationMs` + `getLastSearchDurationMs()` getter, `resetSearchDurationMeasurement()`, search() 캐시 미스 분기에서 `measureAsync`로 응답 시간 측정. 임계치(1000ms) 초과 시 `console.warn`, 그 이하는 `console.debug` (production 환경에서는 로깅 생략)
   - `tests/unit/measureAsync.test.ts` 신규 (3 tests) — 성공/실패/0ms 케이스
   - `tests/unit/searchModule.test.ts` 확장 (+5 tests) — 임계치 상수 / 초기 null / 캐시 미스 시 측정 / NF-01 위반 경고 / 캐시 적중 시 측정 안 함 / 실패 시도 진단용 측정 보존
+- **PR #74 (Story #5 통합) 리뷰 반영** (CodeRabbit 30건 중 동작/안전 영향분, 2026.05.21):
+  - `src/components/search/SearchDropdown.tsx`: ARIA listbox/option 안 button 중첩 제거 — `<li role="option">`에 `tabIndex`·`onClick`·`onKeyDown` 직접 부여. 형제 파일 import도 `@/components/search/...` alias로 통일
+  - `src/lib/externalApiClient.ts`: JSON 파싱 실패·`results` 형태 이상도 `ExternalApiError`로 통일해 상위가 단일 catch로 처리 가능
+  - `src/utils/measureAsync.ts`: `onMeasure` 콜백이 throw해도 `fn`의 원래 성공/실패 의미가 오염되지 않도록 `safeMeasure()` 헬퍼로 격리
+  - `src/modules/searchModule.ts`: 캐시 적중·빈 검색어 등 외부 호출 없는 분기에서 `lastSearchDurationMs`를 `null`로 명시 리셋 — "마지막 호출" 계약 유지
+  - `src/hooks/useSearchQuery.ts`: `normalizedQuery = debouncedQuery.trim()`을 queryKey·queryFn·enabled 세 곳에 동일 적용해 정규화 일관성 확보
+  - `.husky/prepare-commit-msg`: 첫 제목 탐색에서 공백 라인도 제외 (`grep -vE '^[[:space:]]*(#|$)'`)
+  - `.claude/agents/issue-branch.md`: 이슈 조회·브랜치 생성을 `gh` CLI 1순위·MCP fallback으로 명문화 (`github.md`와 일치)
+  - `CLAUDE.md` §5 파일명 규칙: kebab-case 강제가 아니라 카테고리별 관례(모듈/훅=camelCase, 컴포넌트=PascalCase, 문서=kebab-case)로 명확화
+  - 문서 markdownlint 경고 정리: 코드 펜스 언어 명시(`text`), 헤더 후 빈 줄, 코드 스팬 공백 제거 (`docs/04-plan/{issues,sprint-1-mapping}.md`, `docs/06-setup/git-hooks.md`, `docs/07-tech-rationale/README.md`, `.claude/agents/github.md`)
+  - `tests/unit/components/search/SearchInput.test.tsx`: 호출 횟수(`toHaveBeenCalledTimes(1)`) 단언 추가 — 회귀 방지
+  - **기각:** 모든 `//` 주석을 `/* */` 블록 주석으로 강제 변환 제안 — 코드 블록마다 한국어 주석 정책은 형식이 아니라 위치를 강제하므로 현재 혼합 방식 유지 (사용자 결정)
+  - **후속 이슈로 분리(#75):** `candidateModule`/`tournamentModule`/`useDebounce`의 `it.todo` 테스트 실구현 — 각 모듈의 본 구현 Task(#17, #23 등)와 함께 진행
 
 ### Deprecated
 - _(없음.)_

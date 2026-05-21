@@ -1,20 +1,31 @@
-// 검색 도메인 비즈니스 로직. 3계층 아키텍처에서 Business layer 담당.
-// View는 직접 외부 API를 호출하지 않고 항상 본 모듈을 경유한다.
+/**
+ * 검색 도메인 비즈니스 로직. 3계층 아키텍처에서 Business layer 담당.
+ * View는 직접 외부 API를 호출하지 않고 항상 본 모듈을 경유한다.
+ */
 
 import { fetchGames } from "@/lib/externalApiClient";
 import { useStateStore } from "@/store/stateStore";
 import type { IGame } from "@/types/game";
 import { measureAsync } from "@/utils/measureAsync";
 
-// NF-01 임계치 — 검색 응답이 이 값을 넘으면 개발 환경에서 console.warn으로 경고.
-// 명시적으로 export해 테스트와 다른 모듈에서 동일 값을 참조하도록 한다 (매직 넘버 방지).
+/**
+ * NF-01 임계치 — 검색 응답이 이 값을 넘으면 개발 환경에서 console.warn으로 경고.
+ * 명시적으로 export해 테스트와 다른 모듈에서 동일 값을 참조하도록 한다 (매직 넘버 방지).
+ */
 export const SEARCH_RESPONSE_TIME_BUDGET_MS = 1000;
 
-// 마지막 검색 호출의 응답 시간(ms). 모듈 스코프에 보관하여 로컬 디버깅·테스트에서 조회 가능.
-// store에 두지 않은 이유: 응답 시간은 UI 렌더와 무관한 진단 정보라서 리렌더 트리거가 불필요.
+/**
+ * 마지막 search() 호출의 응답 시간(ms). 모듈 스코프에 보관해 로컬 디버깅·테스트에서 조회.
+ * store에 두지 않은 이유: 응답 시간은 UI 렌더와 무관한 진단 정보라서 리렌더 트리거 불필요.
+ *
+ * 계약 (PR #74 리뷰 반영):
+ *   - 외부 호출 발생 시: 실제 측정값(ms) 기록
+ *   - 캐시 적중·빈 검색어 등 외부 호출 없는 경로: **null로 리셋** — 이전 측정값이 남으면
+ *     "마지막 호출"의 의미가 깨지므로 모든 진입점에서 의도된 상태를 보장
+ */
 let lastSearchDurationMs: number | null = null;
 
-// 검색어 유효성 — 공백/빈 값은 false. F-12에 따라 외부 API 호출을 막는 1차 게이트.
+/** 검색어 유효성 — 공백/빈 값은 false. F-12에 따라 외부 API 호출을 막는 1차 게이트. */
 export function validateQuery(query: string): boolean {
   return query.trim().length > 0;
 }
@@ -42,21 +53,25 @@ export function resetSearchDurationMeasurement(): void {
  * - 캐시 미스 시 외부 API 호출 + 응답 시간 측정 (NF-01)
  */
 export async function search(query: string): Promise<IGame[]> {
-  // 1) 빈 검색어 차단 — 호출자(useSearchQuery)가 이미 enabled 가드를 가지지만 방어층으로 한 번 더
+  /* 1) 빈 검색어 차단 — 호출자(useSearchQuery)가 이미 enabled 가드를 가지지만 방어층으로 한 번 더.
+   *    외부 호출이 없으므로 측정값도 null로 리셋해 "마지막 호출" 의미를 유지. */
   if (!validateQuery(query)) {
+    lastSearchDurationMs = null;
     return [];
   }
 
-  // 2) 캐시 조회 — 동일 검색어가 이미 들어왔다면 외부 호출 없이 즉시 반환
+  /* 2) 캐시 조회 — 동일 검색어가 이미 들어왔다면 외부 호출 없이 즉시 반환.
+   *    캐시 적중도 외부 호출이 없으므로 측정값을 null로 리셋. */
   const store = useStateStore.getState();
   const cached = store.getCache(query);
   if (cached) {
+    lastSearchDurationMs = null;
     return cached;
   }
 
-  // 3) 캐시 미스 — 외부 API 호출 시간을 측정하면서 결과를 받아옴
-  // measureAsync는 fetchGames가 throw해도 측정값을 한 번 통보하고 에러를 재throw하므로
-  // 실패 케이스의 응답 시간도 lastSearchDurationMs에 보존된다 (타임아웃 진단용).
+  /* 3) 캐시 미스 — 외부 API 호출 시간을 측정하면서 결과를 받아옴.
+   *    measureAsync는 fetchGames가 throw해도 측정값을 한 번 통보하고 에러를 재throw하므로
+   *    실패 케이스의 응답 시간도 lastSearchDurationMs에 보존된다 (타임아웃 진단용). */
   const results = await measureAsync(
     () => fetchGames(query),
     (durationMs, success) => {

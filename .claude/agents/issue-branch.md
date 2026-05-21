@@ -38,7 +38,7 @@ model: sonnet
 
 ## 브랜치 명명 규칙
 
-```
+```text
 <type>/<issue-number>-<slug>
 ```
 
@@ -62,14 +62,15 @@ slug는 영문 kebab-case, 한국어 이슈 제목을 간결하게 영문 요약
 1. **현재 베이스라인 확인**
    - `docs/04-plan/master-plan.md` §7 Phase 표 + `docs/04-plan/issues.md` §3 Sprint 표를 대조
 2. **대상 이슈 식별**
-   - `mcp__github__list_issues`로 OPEN 이슈 조회
+   - `gh issue list --state open` 1순위, `mcp__github__list_issues`는 fallback (gh CLI 우선 정책)
    - `docs/04-plan/issues.md`의 해당 Sprint 범위와 교차 검증
    - Story 이슈와 그 자식 Task 이슈 모두 포함
 3. **브랜치 일괄 생성**
    - 분기 기준 브랜치: 보통 `dev` (GitFlow 변형). main 보호 브랜치는 사용하지 않는다.
-   - `mcp__github__create_branch`로 GitHub 원격에 직접 생성
+   - `git checkout dev && git pull origin dev --ff-only && git checkout -b <type>/<N>-<slug> && git push -u origin <branch>` 1순위
+   - `mcp__github__create_branch`는 일괄 50개 이상 등 특수 케이스 fallback
 4. **검증**
-   - `mcp__github__list_branches`로 생성 결과 확인
+   - `gh api repos/<owner>/<repo>/branches | jq -r '.[].name'` 1순위, `mcp__github__list_branches`는 fallback
    - `docs/04-plan/issues.md` §11 또는 본 에이전트 정의의 명명 규칙과 일치하는지 확인
 5. **문서화**
    - 생성 결과를 `docs/04-plan/next-actions.md` 또는 운영 로그에 반영

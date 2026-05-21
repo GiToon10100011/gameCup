@@ -23,6 +23,8 @@ describe("SearchInput (#9)", () => {
     const handler = vi.fn();
     // 컴포넌트를 렌더하면 초기 effect가 즉시 한 번 실행되어 빈 값이 부모에 전달됨
     render(<SearchInput onDebouncedChange={handler} delayMs={300} />);
+    // PR #74 리뷰: 호출 인자만 검증하면 같은 인자로 N회 호출되는 회귀를 놓치므로 횟수도 함께 단언
+    expect(handler).toHaveBeenCalledTimes(1);
     expect(handler).toHaveBeenCalledWith("");
   });
 

@@ -57,18 +57,37 @@ export async function fetchGames(query: string): Promise<IGame[]> {
     throw new ExternalApiError(`RAWG request failed: ${res.statusText}`, res.status);
   }
 
-  // 4) JSON 파싱 후 도메인 형태로 정규화
-  const data = (await res.json()) as IRawgResponse;
+  /**
+   * 4) JSON 파싱 + 스키마 검증 — 실패 시도 ExternalApiError로 래핑해 상위가 단일 catch로 처리.
+   * PR #74 리뷰: 파싱 실패·`results` 형태 이상이 일반 예외로 전파되면 §40 계약이 깨진다.
+   */
+  let data: IRawgResponse;
+  try {
+    data = (await res.json()) as IRawgResponse;
+  } catch (parseError) {
+    throw new ExternalApiError(
+      `RAWG response JSON parse failed: ${(parseError as Error).message}`,
+      res.status,
+    );
+  }
+  if (!data || !Array.isArray(data.results)) {
+    throw new ExternalApiError(
+      "RAWG response missing 'results' array",
+      res.status,
+    );
+  }
   return normalizeResponse(data);
 }
 
-// RAWG 원본 응답을 GameCup 내부에서 사용하는 IGame 형태로 정규화한다.
-// - id를 string으로 통일 (다른 외부 API로 교체할 때도 같은 형태 유지)
-// - background_image가 null이면 빈 문자열로 fallback해 컴포넌트가 placeholder를 표시
+/**
+ * RAWG 원본 응답을 GameCup 내부에서 사용하는 IGame 형태로 정규화한다.
+ * - id를 string으로 통일 (다른 외부 API로 교체할 때도 같은 형태 유지)
+ * - background_image가 null이면 빈 문자열로 fallback해 컴포넌트가 placeholder 표시
+ */
 function normalizeResponse(raw: IRawgResponse): IGame[] {
-  return raw.results.map((g) => ({
-    id: String(g.id),
-    name: g.name,
-    thumbnailUrl: g.background_image ?? "",
+  return raw.results.map((rawGame) => ({
+    id: String(rawGame.id),
+    name: rawGame.name,
+    thumbnailUrl: rawGame.background_image ?? "",
   }));
 }

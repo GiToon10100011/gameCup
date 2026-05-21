@@ -81,7 +81,7 @@
 
 ## 의존성 ([`./issues.md`](./issues.md) §5)
 
-```
+```text
 EPIC-00 (이미 완료 — Phase 0 스캐폴딩)
   ↓
 #5 (검색 UI + API)
