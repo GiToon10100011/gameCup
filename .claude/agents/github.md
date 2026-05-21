@@ -166,6 +166,29 @@ model: sonnet
 
 > **gh CLI 우선 원칙:** `gh pr create`가 작동하지 않을 때만(미설치/권한 등) GitHub MCP `mcp__github__create_pull_request`로 fallback.
 
+### 3.0. "다음 작업 진행" 신호 시 OPEN PR 우선 처리 (필수)
+
+사용자가 "다음 작업 진행해줘", "이어서 진행", "다음 Task로" 같은 다음 단계 진행 신호를 보내면 **즉시 새 Task에 착수하지 않는다.** 다음 절차를 먼저 수행한다.
+
+1. `gh pr list --state open --json number,title,headRefName,baseRefName,mergeable,mergeStateStatus,author --jq '.[]'`로 OPEN PR 전체 조회
+2. 각 PR에 대해 다음을 정리:
+   - 번호·제목·head·base
+   - `mergeable` / `mergeStateStatus` (CLEAN·DIRTY·CONFLICTING)
+   - 미반영 리뷰 코멘트(CodeRabbit·사용자) 존재 여부 — `gh api repos/<owner>/<repo>/pulls/<N>/comments`로 확인
+3. 사용자에게 한 화면 요약 보고:
+   - 미반영 리뷰가 있는 PR → "리뷰 반영 후 머지 가능"
+   - CLEAN/MERGEABLE PR → "즉시 머지 가능"
+   - 충돌 PR → "rebase/merge 또는 close 결정 필요"
+4. 사용자 결정에 따라 처리:
+   - 리뷰 반영 → 해당 브랜치 전환 → 수정 → 푸시 → 리뷰 답변
+   - 머지 → §4 (이슈 close) + §5 (브랜치 정리) 즉시 실행
+   - close → 사유 코멘트 + `gh pr close`
+5. **모든 OPEN PR이 처리된 뒤에만** 다음 Task에 착수
+
+미반영 리뷰가 있는데 머지하면 추후 회귀가 발생하므로, 머지 전 반드시 리뷰 반영 확인.
+
+---
+
 ### 3.5. Protected ruleset 브랜치 직접 커밋 금지 (필수)
 
 `main`, `dev` 등 GitHub Branch protection / Ruleset이 적용된 브랜치에는 **로컬 커밋·푸시를 절대 시도하지 않는다.** 운영/문서 변경(컨벤션 갱신·CLAUDE.md 수정 등)이 필요해도 같은 절차를 따른다:
