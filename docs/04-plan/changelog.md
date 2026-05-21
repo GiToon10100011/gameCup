@@ -53,6 +53,16 @@
 - **Task #12 — 세션 내 검색 결과 캐싱 (Map 기반)** (2026.05.20):
   - `tests/unit/stateStore.cache.test.ts` 신규 (6 tests) — store 레벨 캐시 동작 직접 검증: 초기 undefined / 저장-조회 라운드트립 / 검색어별 격리 / setCache가 새 Map 인스턴스 생성(React 리렌더 트리거) / 동일 검색어 덮어쓰기 / resetAll 후 캐시 비움 + 재사용 가능
   - 캐시 로직 자체(`searchCache: Map<string, IGame[]>` + `getCache`/`setCache`)는 이미 UML v1.1 §StateStore와 일치하게 구현되어 있었으며, 본 Task에서 store 레벨 동작 보증을 추가
+- **PR 머지 후 이슈 자동 close 컨벤션 영구화** (사용자 영구 지시, 2026.05.20):
+  - `Closes #N` 자동 닫힘은 PR base가 default branch일 때만 동작 → 본 프로젝트의 PR 위계 흐름(Task PR → Story 브랜치)에서는 자동 close 미동작. `github` 에이전트가 머지 직후 본문의 `Closes` 토큰을 파싱해 `gh issue close <N> --reason completed`로 직접 닫고 사용자에게 보고
+  - `CLAUDE.md` §9 안전 가드레일 + `.claude/agents/github.md` §PR 절차 4에 명문화
+  - 사용자 메모리 `feedback_pr_merge_auto_close.md` 신설 (모든 프로젝트 공통)
+  - 밀려 있던 #9, #10, #11 수동 close 완료
+- **Task #13 — 검색 응답 시간 측정 (NF-01)** (2026.05.20):
+  - `src/utils/measureAsync.ts` 신규 — `measureAsync(fn, onMeasure)` 범용 비동기 시간 측정 유틸 (성공/실패 모두 측정, `performance.now()` 우선, `Date.now()` fallback)
+  - `src/modules/searchModule.ts` — `SEARCH_RESPONSE_TIME_BUDGET_MS = 1000` 상수, 모듈 내부 `lastSearchDurationMs` + `getLastSearchDurationMs()` getter, `resetSearchDurationMeasurement()`, search() 캐시 미스 분기에서 `measureAsync`로 응답 시간 측정. 임계치(1000ms) 초과 시 `console.warn`, 그 이하는 `console.debug` (production 환경에서는 로깅 생략)
+  - `tests/unit/measureAsync.test.ts` 신규 (3 tests) — 성공/실패/0ms 케이스
+  - `tests/unit/searchModule.test.ts` 확장 (+5 tests) — 임계치 상수 / 초기 null / 캐시 미스 시 측정 / NF-01 위반 경고 / 캐시 적중 시 측정 안 함 / 실패 시도 진단용 측정 보존
 
 ### Deprecated
 - _(없음.)_
