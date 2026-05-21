@@ -41,6 +41,13 @@
   - `CLAUDE.md` §9 안전 가드레일 + `.claude/agents/github.md` §PR 절차 4에 명문화
   - 사용자 메모리 `feedback_pr_merge_auto_close.md` 신설 (모든 프로젝트 공통)
   - 밀려 있던 #9, #10, #11 수동 close 완료
+- **머지 후 자동 브랜치 정리 + protected ruleset 작업 흐름 영구화** (사용자 영구 지시 2026.05.20, 이슈 #69):
+  - **머지 후 자동 정리:** PR 머지 직후 `github` 에이전트가 head 브랜치를 원격·로컬 모두 삭제(`git push origin --delete` + `git branch -d`). Epic/Story 통합 베이스는 본 통합 PR 머지 시점에만.
+  - **protected ruleset 흐름:** main/dev 등 protected 브랜치에 직접 커밋·푸시 금지. 모든 변경(운영/문서 포함)은 ① 이슈 생성 → ② dev에서 브랜치 분기 → ③ 작업·커밋 → ④ PR(base=dev) → ⑤ 머지 절차.
+  - `CLAUDE.md` §9 안전 가드레일에 두 정책 행 추가
+  - `.claude/agents/github.md` §3.5 (protected 브랜치 흐름) + §5 (브랜치 자동 정리) 신설
+  - 사용자 메모리 `feedback_merge_then_delete_branch.md` · `feedback_protected_branch_flow.md` 신설 (모든 프로젝트 공통)
+  - Sprint 1 누적 머지 브랜치 5건 정리: `feat/9`, `feat/10`, `feat/11`, `feat/12`, `chore/ops-auto-close-convention` (원격·로컬 모두 삭제)
 
 ### Deprecated
 - _(없음.)_
