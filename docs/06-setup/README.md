@@ -27,6 +27,7 @@
 | `sentry-setup.md` | Sentry DSN 발급·Next.js 통합·소스맵 업로드 | Iteration 4 (예정) | 미작성 |
 | `vercel-deploy.md` | Vercel 연동·환경 변수·프리뷰 배포 | Iteration 4 (예정) | 미작성 |
 | `playwright-e2e.md` | Playwright 브라우저 바이너리 설치·로컬 실행 | Phase 4 (테스트 정비) | 미작성 |
+| [`linear-cycles.md`](./linear-cycles.md) | Linear Cycle(Sprint) cadence 초기화 (4주·일요일 시작·첫 사이클 2026-05-24·웹 UI 절차) | Phase 0 후속 / 2026.05.21 | 활성 |
 
 > 새 외부 의존성·도구 도입 시 본 표에 행을 추가한 뒤 `docs-setup` 에이전트에 가이드 작성을 위임한다.
 

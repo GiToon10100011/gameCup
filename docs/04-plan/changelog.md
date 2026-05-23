@@ -10,6 +10,9 @@
 코드 작업 중 발견된 PRD/설계 이탈 사항을 누적 기록한다. 충분히 쌓이면 [`../05-process/iteration-template.md`](../05-process/iteration-template.md)를 복사해 `01-prd/iteration-4.md` 등을 분기 생성한다.
 
 ### Added
+- **운영 도구: Linear 워크스페이스 보조 도입** (2026.05.23, 이슈 #76) — GameCup 팀(team id `eee1389e-3647-44fa-b1b1-64d123c102dc`) 신규 세팅. 주 트래커는 여전히 **GitHub Issues**이며, Linear는 이터레이션 단위 운영 시각화를 보조하기 위한 **별도 워크스페이스**로 운용한다.
+- **설정 가이드 신규:** [`../06-setup/linear-cycles.md`](../06-setup/linear-cycles.md) 추가. Linear Cycle(Sprint) cadence 초기화(4주·일요일 시작·첫 사이클 2026-05-24·미리 생성 1·cooldown 0) 절차와 검증 체크리스트. 8개 표준 섹션 포함.
+- **인덱스 갱신:** [`../06-setup/README.md`](../06-setup/README.md) 가이드 목록 표에 `linear-cycles.md` 행 추가 (도입 시점: Phase 0 후속 / 2026.05.21, 상태: 활성).
 - **글로벌 에이전트 `project-bootstrap`** 신규 — 모든 신규 프로젝트의 PRD→이슈 분해·GitHub MCP 등록·docs 구조 자동 부트스트랩 담당. 위치: `~/.claude/agents/project-bootstrap.md` (사용자 레벨, 모든 프로젝트 공용). **프로필 시스템(mini/lite/standard/full)** 도입 — default `lite`, 매번 확인.
 - **글로벌 에이전트 `docs-builder`** 신규 — PRD/아이디어 기반 후속 문서(API 명세·용어집·ADR·테스트 계획·페르소나·DB 스키마·모듈 설계·아키텍처 문서 등) 단계적 확장. 전담 영역(PRD/UML/UC)은 기존 에이전트에 위임 안내. 위치: `~/.claude/agents/docs-builder.md`
 - **`docs/04-plan/issues.md`** — 루트의 `issues.md`를 docs 트리 안으로 이동·정리 (청사진 위치 표준화)
@@ -26,6 +29,10 @@
 - 기술 근거 [`../07-tech-rationale/README.md`](../07-tech-rationale/README.md) §12 (Husky · lint-staged · GitHub Actions)
 
 ### Changed
+- **글로벌 에이전트 `~/.claude/agents/project-bootstrap.md` 보강** (모든 신규 프로젝트에 영향):
+  - 새 §4.1 "Linear Cycle cadence 초기화" 서브섹션 — MCP cadence API 부재 사실, AskUserQuestion으로 정책 수집, Linear 웹 UI 절차, `list_cycles` 사후 검증, standard/full 프로필에서는 `docs-setup`에 `docs/06-setup/linear-cycles.md` 가이드 작성 위임.
+  - §6.2 Linear 트래커 절차에 §4.1 사전 조건 한 줄 추가.
+  - §10 가드레일에 "Linear cadence는 MCP 미지원, 웹 UI 필수" 항목 추가.
 - **인터페이스 `I` 접두사 + 블록 주석 컨벤션 영구 적용** (사용자 영구 원칙, PR #63 리뷰 + 2026.05.20): TypeScript `interface`는 항상 `I` 접두사(예: `ISearchInputProps`), `type`/컴포넌트는 영향 없음. 새 코드 블록(함수·effect·분기·jsx·테스트)마다 한국어 주석 필수(교육·포트폴리오 목적, 보안 우려 없음). `CLAUDE.md` §5·`.claude/agents/code.md`·글로벌 `project-bootstrap`·사용자 메모리(`feedback_interface_i_prefix.md`, `feedback_block_comments_required.md`)에 명문화.
 - **`gh` CLI 우선 + PR/이슈 템플릿 우선 영구 적용** (사용자 영구 지시, 2026.05.20): 이슈·PR 생성·머지·코멘트는 `gh` CLI 1순위(MCP는 fallback). 본문은 `.github/pull_request_template.md`와 `.github/ISSUE_TEMPLATE/*.md` 골격을 우선 따르고 추가 정보 덧붙임. `CLAUDE.md` §9·`.claude/agents/github.md`·글로벌 `project-bootstrap` §9.5와 사용자 메모리(`feedback_gh_cli_preferred.md`, `feedback_use_github_templates.md`)에 명문화.
 - **PR 위계 흐름 영구 적용** (사용자 영구 지시, 2026.05.20): Task PR → Story 브랜치, Story PR → Epic 브랜치, Epic PR → dev. Epic/Story 브랜치는 자식 PR이 모이는 통합 베이스로 코드 작성보다는 머지 후 보완 작업만. `CLAUDE.md` §9·`.claude/agents/{issue-branch,github}.md`·`docs/04-plan/sprint-1-mapping.md`에 명문화, 글로벌 `project-bootstrap` §9.5와 사용자 메모리 `feedback_pr_hierarchy_flow.md`에도 저장.
