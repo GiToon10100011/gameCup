@@ -10,6 +10,14 @@
 코드 작업 중 발견된 PRD/설계 이탈 사항을 누적 기록한다. 충분히 쌓이면 [`../05-process/iteration-template.md`](../05-process/iteration-template.md)를 복사해 `01-prd/iteration-4.md` 등을 분기 생성한다.
 
 ### Added
+- **`tailwind-variants` + `tailwind-merge` 도입** (PR #64 리뷰 피드백): SearchDropdown의 4가지 상태 공통 스타일을 slots/variants로 모듈화. 기술 근거 [`../07-tech-rationale/README.md`](../07-tech-rationale/README.md) §3에 누적, `.env.local.example`에 RAWG BASE_URL override 변수(`NEXT_PUBLIC_RAWG_BASE_URL`) 추가.
+- **글로벌 에이전트 `project-bootstrap`** 신규 — 모든 신규 프로젝트의 PRD→이슈 분해·GitHub MCP 등록·docs 구조 자동 부트스트랩 담당. 위치: `~/.claude/agents/project-bootstrap.md` (사용자 레벨, 모든 프로젝트 공용). **프로필 시스템(mini/lite/standard/full)** 도입 — default `lite`, 매번 확인.
+- **글로벌 에이전트 `docs-builder`** 신규 — PRD/아이디어 기반 후속 문서(API 명세·용어집·ADR·테스트 계획·페르소나·DB 스키마·모듈 설계·아키텍처 문서 등) 단계적 확장. 전담 영역(PRD/UML/UC)은 기존 에이전트에 위임 안내. 위치: `~/.claude/agents/docs-builder.md`
+- **`docs/04-plan/issues.md`** — 루트의 `issues.md`를 docs 트리 안으로 이동·정리 (청사진 위치 표준화)
+- **Sprint 1 이슈→브랜치 일괄 분기** (EPIC-01, #1·#5~#22 총 18개 브랜치) dev(55fb47d) 기준 생성
+- **신규 에이전트 `issue-branch`** — GitHub Issues/Projects·스프린트 브랜치 운영 담당 ([`../../.claude/agents/issue-branch.md`](../../.claude/agents/issue-branch.md))
+- **Husky `prepare-commit-msg` 훅** — 작업 브랜치 커밋 시 제목 끝에 `(#N)` 자동 부착 ([`../../.husky/prepare-commit-msg`](../../.husky/prepare-commit-msg))
+- **Sprint 1 이슈-브랜치 매핑 문서** [`./sprint-1-mapping.md`](./sprint-1-mapping.md)
 - **운영 체크리스트** [`./next-actions.md`](./next-actions.md) 신설 — Phase 0 직후 사용자가 직접 처리할 블로킹/권장 작업 + Phase 1+ 참조 링크
 - **Husky 9.x + lint-staged 15.x** 도입: pre-commit hook(`.husky/pre-commit`)에서 staged TS/TSX 파일에 `eslint --fix --max-warnings=0` 자동 실행
 - **GitHub Actions CI 워크플로우** ([`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)):
@@ -19,7 +27,55 @@
 - 기술 근거 [`../07-tech-rationale/README.md`](../07-tech-rationale/README.md) §12 (Husky · lint-staged · GitHub Actions)
 
 ### Changed
+- **인터페이스 `I` 접두사 + 블록 주석 컨벤션 영구 적용** (사용자 영구 원칙, PR #63 리뷰 + 2026.05.20): TypeScript `interface`는 항상 `I` 접두사(예: `ISearchInputProps`), `type`/컴포넌트는 영향 없음. 새 코드 블록(함수·effect·분기·jsx·테스트)마다 한국어 주석 필수(교육·포트폴리오 목적, 보안 우려 없음). `CLAUDE.md` §5·`.claude/agents/code.md`·글로벌 `project-bootstrap`·사용자 메모리(`feedback_interface_i_prefix.md`, `feedback_block_comments_required.md`)에 명문화.
+- **`gh` CLI 우선 + PR/이슈 템플릿 우선 영구 적용** (사용자 영구 지시, 2026.05.20): 이슈·PR 생성·머지·코멘트는 `gh` CLI 1순위(MCP는 fallback). 본문은 `.github/pull_request_template.md`와 `.github/ISSUE_TEMPLATE/*.md` 골격을 우선 따르고 추가 정보 덧붙임. `CLAUDE.md` §9·`.claude/agents/github.md`·글로벌 `project-bootstrap` §9.5와 사용자 메모리(`feedback_gh_cli_preferred.md`, `feedback_use_github_templates.md`)에 명문화.
+- **PR 위계 흐름 영구 적용** (사용자 영구 지시, 2026.05.20): Task PR → Story 브랜치, Story PR → Epic 브랜치, Epic PR → dev. Epic/Story 브랜치는 자식 PR이 모이는 통합 베이스로 코드 작성보다는 머지 후 보완 작업만. `CLAUDE.md` §9·`.claude/agents/{issue-branch,github}.md`·`docs/04-plan/sprint-1-mapping.md`에 명문화, 글로벌 `project-bootstrap` §9.5와 사용자 메모리 `feedback_pr_hierarchy_flow.md`에도 저장.
 - `package.json`: `prepare` 스크립트 추가, `husky` `lint-staged` devDependency 추가, `lint-staged` 설정 블록 추가
+- `CLAUDE.md` — 에이전트 로스터를 8개에서 **9개**로 확장(`issue-branch` 추가), 위임 결정 트리·안전 가드레일에 이슈 자동 멘션·브랜치 명명 규칙 추가
+- `.claude/agents/github.md` — 이슈 자동 멘션 메커니즘 + 통합 브랜치 `Refs:` 작성 규칙 추가, `issue-branch`와 책임 분담 명시
+- `docs/06-setup/git-hooks.md` — `prepare-commit-msg` 동작·스킵 조건·동작 확인 절차 추가
+- `CLAUDE.md` — 글로벌 `project-bootstrap`·`docs-builder` 안내 추가, 위임 결정 트리에 신규 프로젝트 초기화·문서 확장 라우팅 추가
+- `.claude/agents/issue-branch.md` · `.claude/agents/github.md` · `docs/04-plan/sprint-1-mapping.md` — `issues.md` 참조 경로를 `docs/04-plan/issues.md`로 갱신
+- `docs/README.md` — issues.md 새 위치 + 이슈 청사진 빠른 진입점 추가
+- **PR #64 리뷰 반영** (SearchDropdown, 2026.05.20):
+  - `src/components/search/SearchDropdown.tsx`: props `games` → `gameArray`(복수형 대신 자료형 명시), `tailwind-variants` slots/variants로 컨테이너·메시지·항목·썸네일·이름 5개 slot 추출
+  - `src/lib/externalApiClient.ts`: `RAWG_BASE_URL` 상수를 `NEXT_PUBLIC_RAWG_BASE_URL` env로 분리(미설정 시 공식 호스트 fallback)
+  - `src/modules/tournamentModule.ts`: filter/forEach/map 콜백 매개변수 `m` → `match` 명시화
+  - `tests/unit/components/search/SearchDropdown.test.tsx`: Vitest/RTL 각 import 심볼·매처 역할을 학습용 주석으로 보강, 신규 props 이름 반영
+- **PR #64 후속 리뷰 반영** (variants 분리, 2026.05.20):
+  - `src/components/search/SearchDropdown.variants.ts` 신규 — `tv()` 정의를 컴포넌트 파일에서 분리(`dropdownVariants` export)
+  - `CLAUDE.md` §5 코딩 컨벤션에 "스타일 variants 분리" 규칙 영구 추가
+  - 사용자 메모리 `feedback_variants_separate_file.md` 신설 — 모든 프로젝트 공통 컨벤션화
+- **Task #11 — `searchGames()` 단위 테스트** (2026.05.20):
+  - `tests/unit/lib/externalApiClient.test.ts` 신규 — `fetchGames` 5건 (정상 정규화 / null thumbnail fallback / HTTP 500 → ExternalApiError / API 키 누락 즉시 throw / BASE_URL override)
+  - `tests/unit/searchModule.test.ts` 신규 — `validateQuery`·`search` 8건 (빈/공백 검색어 차단 / 캐시 적중 NF-05 / 캐시 미스 → fetch + 저장 / 동일 검색어 재호출 시 외부 호출 0)
+  - 외형(`fetchGames`/`search`)은 이미 UML v1.1과 일치하는 상태로 존재했으며, 본 Task에서 동작 검증을 단위 테스트로 보강
+- **Task #12 — 세션 내 검색 결과 캐싱 (Map 기반)** (2026.05.20):
+  - `tests/unit/stateStore.cache.test.ts` 신규 (6 tests) — store 레벨 캐시 동작 직접 검증: 초기 undefined / 저장-조회 라운드트립 / 검색어별 격리 / setCache가 새 Map 인스턴스 생성(React 리렌더 트리거) / 동일 검색어 덮어쓰기 / resetAll 후 캐시 비움 + 재사용 가능
+  - 캐시 로직 자체(`searchCache: Map<string, IGame[]>` + `getCache`/`setCache`)는 이미 UML v1.1 §StateStore와 일치하게 구현되어 있었으며, 본 Task에서 store 레벨 동작 보증을 추가
+- **PR 머지 후 이슈 자동 close 컨벤션 영구화** (사용자 영구 지시, 2026.05.20):
+  - `Closes #N` 자동 닫힘은 PR base가 default branch일 때만 동작 → 본 프로젝트의 PR 위계 흐름(Task PR → Story 브랜치)에서는 자동 close 미동작. `github` 에이전트가 머지 직후 본문의 `Closes` 토큰을 파싱해 `gh issue close <N> --reason completed`로 직접 닫고 사용자에게 보고
+  - `CLAUDE.md` §9 안전 가드레일 + `.claude/agents/github.md` §PR 절차 4에 명문화
+  - 사용자 메모리 `feedback_pr_merge_auto_close.md` 신설 (모든 프로젝트 공통)
+  - 밀려 있던 #9, #10, #11 수동 close 완료
+- **Task #13 — 검색 응답 시간 측정 (NF-01)** (2026.05.20):
+  - `src/utils/measureAsync.ts` 신규 — `measureAsync(fn, onMeasure)` 범용 비동기 시간 측정 유틸 (성공/실패 모두 측정, `performance.now()` 우선, `Date.now()` fallback)
+  - `src/modules/searchModule.ts` — `SEARCH_RESPONSE_TIME_BUDGET_MS = 1000` 상수, 모듈 내부 `lastSearchDurationMs` + `getLastSearchDurationMs()` getter, `resetSearchDurationMeasurement()`, search() 캐시 미스 분기에서 `measureAsync`로 응답 시간 측정. 임계치(1000ms) 초과 시 `console.warn`, 그 이하는 `console.debug` (production 환경에서는 로깅 생략)
+  - `tests/unit/measureAsync.test.ts` 신규 (3 tests) — 성공/실패/0ms 케이스
+  - `tests/unit/searchModule.test.ts` 확장 (+5 tests) — 임계치 상수 / 초기 null / 캐시 미스 시 측정 / NF-01 위반 경고 / 캐시 적중 시 측정 안 함 / 실패 시도 진단용 측정 보존
+- **PR #74 (Story #5 통합) 리뷰 반영** (CodeRabbit 30건 중 동작/안전 영향분, 2026.05.21):
+  - `src/components/search/SearchDropdown.tsx`: ARIA listbox/option 안 button 중첩 제거 — `<li role="option">`에 `tabIndex`·`onClick`·`onKeyDown` 직접 부여. 형제 파일 import도 `@/components/search/...` alias로 통일
+  - `src/lib/externalApiClient.ts`: JSON 파싱 실패·`results` 형태 이상도 `ExternalApiError`로 통일해 상위가 단일 catch로 처리 가능
+  - `src/utils/measureAsync.ts`: `onMeasure` 콜백이 throw해도 `fn`의 원래 성공/실패 의미가 오염되지 않도록 `safeMeasure()` 헬퍼로 격리
+  - `src/modules/searchModule.ts`: 캐시 적중·빈 검색어 등 외부 호출 없는 분기에서 `lastSearchDurationMs`를 `null`로 명시 리셋 — "마지막 호출" 계약 유지
+  - `src/hooks/useSearchQuery.ts`: `normalizedQuery = debouncedQuery.trim()`을 queryKey·queryFn·enabled 세 곳에 동일 적용해 정규화 일관성 확보
+  - `.husky/prepare-commit-msg`: 첫 제목 탐색에서 공백 라인도 제외 (`grep -vE '^[[:space:]]*(#|$)'`)
+  - `.claude/agents/issue-branch.md`: 이슈 조회·브랜치 생성을 `gh` CLI 1순위·MCP fallback으로 명문화 (`github.md`와 일치)
+  - `CLAUDE.md` §5 파일명 규칙: kebab-case 강제가 아니라 카테고리별 관례(모듈/훅=camelCase, 컴포넌트=PascalCase, 문서=kebab-case)로 명확화
+  - 문서 markdownlint 경고 정리: 코드 펜스 언어 명시(`text`), 헤더 후 빈 줄, 코드 스팬 공백 제거 (`docs/04-plan/{issues,sprint-1-mapping}.md`, `docs/06-setup/git-hooks.md`, `docs/07-tech-rationale/README.md`, `.claude/agents/github.md`)
+  - `tests/unit/components/search/SearchInput.test.tsx`: 호출 횟수(`toHaveBeenCalledTimes(1)`) 단언 추가 — 회귀 방지
+  - **기각:** 모든 `//` 주석을 `/* */` 블록 주석으로 강제 변환 제안 — 코드 블록마다 한국어 주석 정책은 형식이 아니라 위치를 강제하므로 현재 혼합 방식 유지 (사용자 결정)
+  - **후속 이슈로 분리(#75):** `candidateModule`/`tournamentModule`/`useDebounce`의 `it.todo` 테스트 실구현 — 각 모듈의 본 구현 Task(#17, #23 등)와 함께 진행
 
 ### Deprecated
 - _(없음.)_

@@ -264,6 +264,27 @@
 
 ---
 
+### tailwind-variants
+
+- **도입 시점:** Iteration 3 / 2026.05.20 (Sprint 1, Task #10 PR 리뷰 피드백)
+- **분류:** Styling (Variant-based utility)
+- **선택 이유:**
+  - Tailwind 클래스 조합을 **slots / variants / compoundVariants**로 선언적으로 관리 → 동일한 외곽 컨테이너 스타일을 4가지 상태(닫힘·로딩·빈 결과·결과 있음)에서 중복 작성하지 않고 재사용
+  - props → 클래스 매핑이 명확해져 컴포넌트 테스트 시 시각 회귀 영역과 동작 영역 분리 용이
+  - TypeScript 자동 추론 — variant 이름 오타가 컴파일 타임에 잡힘 (NF-04)
+  - PR #64 리뷰에서 명시적으로 권장됨 (themes 정의 + 동적 스타일 모듈화)
+- **고려한 대안:**
+  - 인라인 `clsx` + 상수 변수: 빠르지만 variant 조합이 늘어나면 if/ternary 폭증 → 리뷰 피드백의 "themes 정의" 의도와 멀어짐 → 탈락
+  - CVA(class-variance-authority): 사실상 동급이지만 `tailwind-merge` 통합과 slots API에서 tailwind-variants가 우위 → 탈락
+  - styled-components: 런타임 비용 + Server Component 호환성 → 탈락
+- **트레이드오프:** 추가 의존성(~3KB gzip) + variant 정의 자체에 학습 곡선
+- **교체 비용:** 낮음 (각 컴포넌트 파일 내 `tv()` 호출만 일반 string으로 환원 가능)
+- **부속 의존성:** `tailwind-merge` (peer) — 동일 카테고리 Tailwind 클래스 충돌 시 후자가 우선되도록 머지. tailwind-variants가 내부적으로 호출하므로 함께 설치.
+- **관련 요구사항:** F-02 (검색 결과 표시 — 4상태 분기), NF-04 (확장성 — 디자인 시스템 토큰화 기반)
+- **관련 가이드:** (별도 setup 가이드 없음 — 의존성 추가만으로 즉시 사용 가능)
+
+---
+
 ## 13. 유틸리티
 
 ### clsx

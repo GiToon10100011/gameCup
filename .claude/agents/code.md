@@ -45,12 +45,14 @@ model: sonnet
 - React 컴포넌트: 함수형 + named export 권장
 - 상태: `store/stateStore.ts` 단일 Zustand store 사용 (UML §StateStore 매핑)
 - API 호출: `modules/searchModule.ts` 경유, 직접 `fetch`/`externalApiClient` 호출 금지
+- **인터페이스 명명 규칙 — `I` 접두사 필수.** `interface`로 선언되는 모든 타입은 `I` + PascalCase. 예: `ISearchInputProps`, `IGame`, `ITournamentPair`. `type` alias·컴포넌트 명은 영향 없음. (사용자 영구 원칙, PR #63 리뷰)
+- **블록 단위 한국어 주석 필수.** 교육·포트폴리오 목적이므로 새로 작성하는 모든 코드는 함수/effect/분기/jsx 섹션/테스트 그룹마다 한국어 주석으로 역할 설명. WHY 중심, WHAT은 자명하지 않을 때만. (사용자 영구 원칙, 2026.05.20)
 
 ## 출력 형식
 
 - 코드 블록은 TypeScript/TSX
-- 주석은 최소화 (자명한 코드는 주석 불필요)
-- 변경 요약은 한국어로
+- **주석은 블록 단위로 한국어로** 풍부하게 작성 (교육용 프로젝트 — 보안 우려 없음). 메모리 `feedback_block_comments_required.md` 참조.
+- 변경 요약도 한국어로
 
 ## 금지 사항
 

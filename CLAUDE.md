@@ -23,7 +23,7 @@
 
 ## 2. 작업 위임 규칙 (Subagent Roster)
 
-본 프로젝트는 **8개의 분야별 서브에이전트**를 정의한다. 사용자 요청을 받으면 트리거 키워드와 작업 성격을 매칭해 해당 에이전트에 위임한다. 정의 본문은 [`.claude/agents/`](.claude/agents/).
+본 프로젝트는 **9개의 분야별 서브에이전트**를 정의한다(프로젝트 로컬, `.claude/agents/`). 추가로 사용자 레벨(`~/.claude/agents/`)에 **`project-bootstrap`** 글로벌 에이전트가 있어 모든 신규 프로젝트의 최초 초기화를 담당한다. 사용자 요청을 받으면 트리거 키워드와 작업 성격을 매칭해 해당 에이전트에 위임한다.
 
 | 에이전트 | 분야 | 트리거 예시 | 산출물 위치 |
 | --- | --- | --- | --- |
@@ -34,15 +34,21 @@
 | `docs-setup` | 환경 설정 가이드 | "Supabase 설치 가이드", "GCP 설정 안내", "Sentry 도입 절차" | `docs/06-setup/*.md` |
 | `docs-tech-rationale` | 기술 선택 근거 | "라이브러리 도입 근거 추가", "왜 X를 썼는지 기록" | `docs/07-tech-rationale/README.md` |
 | `code` | 코드 구현 | "F-XX 구현", "모듈 채우기", "리팩토링" | `src/**`, `tests/**` |
-| `github` | Git/GitHub | "커밋", "PR 생성", "main 푸시", "git init" | (Git 메타데이터) |
+| `github` | Git/GitHub 운영 | "커밋", "PR 생성", "푸시", "git init" | (Git 메타데이터·PR) |
+| `issue-branch` | 이슈·브랜치 운영 | "Sprint N 브랜치 분기", "이슈 목록", "이슈-브랜치 매핑" | GitHub Issues/Branches |
+| `project-bootstrap` 🌐 | 신규 프로젝트 부트스트랩 (글로벌, `~/.claude/agents/`) | "프로젝트 초기화", "PRD 분해해서 이슈 등록", "신규 저장소 부트스트랩" | GitHub Issues + 새 프로젝트의 `docs/` 트리·`CLAUDE.md`·`.claude/agents/` |
+| `docs-builder` 🌐 | PRD/아이디어 기반 문서 확장 (글로벌) | "문서 추천", "API 명세 만들어줘", "용어집·ADR·테스트 계획·페르소나·DB 스키마 작성" | `docs/` 트리 내 추가 산출 (PRD/UML/UC 외 모든 문서) |
 
 ### 위임 결정 트리
 
 ```
 사용자 요청
   │
+  ├─ "프로젝트 초기화"/"신규 저장소 부트스트랩"/"PRD 분해해서 이슈 등록" → project-bootstrap (글로벌)
+  ├─ "API 명세"/"용어집"/"ADR"/"테스트 계획"/"페르소나"/"DB 스키마"/"문서 추천" → docs-builder (글로벌)
   ├─ "구현"/"버그 수정"/"코드 작성" → code
-  ├─ "커밋"/"푸시"/"PR" → github
+  ├─ "커밋"/"푸시"/"PR 생성·머지" → github
+  ├─ "이슈 목록"/"Sprint N 브랜치"/"이슈-브랜치 매핑" → issue-branch
   ├─ "PRD"/"기능 추가"/"요구사항" → docs-prd
   ├─ "UML"/"클래스/시퀀스/액티비티" → docs-uml
   ├─ "UC"/"유즈케이스" → docs-usecase
@@ -94,12 +100,15 @@
 
 | 항목 | 규칙 |
 | --- | --- |
-| 파일명 | kebab-case (예: `tournament-module.ts`는 ❌, `tournamentModule.ts`는 ✅ — 모듈은 camelCase. 컴포넌트는 PascalCase) |
+| 파일명 | 카테고리별로 다름. 모듈·스토어·훅·유틸은 **camelCase** (`searchModule.ts`, `useDebounce.ts`), 컴포넌트는 **PascalCase** (`SearchInput.tsx`), 문서·설정은 **kebab-case** (`iteration-3.md`, `next.config.mjs`). 하나의 규칙으로 강제하지 않고 카테고리별 관례를 따른다. |
 | 컴포넌트 | PascalCase + 폴더 분류 (`components/search/SearchBar.tsx`) |
 | 모듈/스토어 | camelCase (`searchModule.ts`, `stateStore.ts`) |
-| 타입 | PascalCase, `types/` 폴더 집중 (`Game`, `TournamentPair`, `ApiError`) |
+| 타입 | PascalCase, `types/` 폴더 집중 |
+| **인터페이스** | **`I` + PascalCase** 필수 (예: `ISearchInputProps`, `IGame`, `ITournamentPair`). `type` alias·컴포넌트 명은 영향 없음 |
 | Path alias | `@/*` → `src/*` |
 | 3계층 호출 방향 | Presentation → Business → Data (역방향·건너뛰기 금지) |
+| **블록 주석** | **새로 작성하는 모든 코드는 함수·effect·분기·jsx 섹션·테스트 그룹마다 한국어 주석 필수** (교육·포트폴리오 목적). WHY 우선, WHAT은 자명하지 않을 때만 |
+| **스타일 variants 분리** | `tailwind-variants` 정의는 컴포넌트 파일에 인라인 작성 금지. 같은 폴더에 `<ComponentName>.variants.ts`로 분리해 `export const <name>Variants = tv({ slots, variants })` 형태로 내보내고, 컴포넌트는 `import { <name>Variants } from "./<ComponentName>.variants"`로 사용. 재사용·시각 회귀 분리·Storybook 도입 대비 (PR #64 리뷰 영구 반영) |
 
 ---
 
@@ -148,6 +157,13 @@ npm run e2e              # Playwright (Phase 4 이후)
 - **API 키 하드코딩 금지** — 반드시 환경 변수 경유
 - **Force push 금지** — `github` 에이전트는 사용자 명시 승인 없이는 force push하지 않음
 - **계층 건너뛰기 금지** — Presentation이 `lib/externalApiClient.ts`를 직접 import하지 말 것
+- **이슈 자동 멘션** — 작업 브랜치(`<type>/<number>-...`)에서 커밋 시 `.husky/prepare-commit-msg`가 제목에 `(#N)` 자동 부착. 통합 브랜치(`dev`)에서는 본문 `Refs: #N` 또는 PR 본문 `Closes #N`으로 명시 (`github` 에이전트가 처리)
+- **브랜치 명명 규칙** — `<type>/<issue-number>-<slug>` (예: `feat/5-game-search-dropdown`). 한글 브랜치명 금지. 일괄 분기는 `issue-branch` 에이전트에 위임
+- **Task 단위 작업·검증 원칙** — Sprint는 Task 이슈 단위로만 진행하고, 한 Task → 검증 → **사용자 검사 보고** → 다음 Task. Story 이슈는 자식 Task가 모두 완료된 뒤에만 통합 작업, Epic은 자식 Story가 모두 완료된 뒤에만 작업. 한 번에 여러 Task를 묶지 않는다 (사용자 명시 예외 제외).
+- **PR 위계 흐름** — Task PR → **Story 브랜치**로, Story PR → **Epic 브랜치**로, Epic PR → `dev`로 머지. Epic/Story 브랜치는 자식 PR이 모이는 **통합 베이스**이며 직접 코드 작성보다는 자식 머지 후 보완 작업만. PR base 결정은 `github` 에이전트가 `sprint-N-mapping.md`를 보고 자동 매핑한다.
+- **`gh` CLI 우선, MCP는 fallback** — 이슈·PR 운영은 항상 `gh` CLI 1순위. GitHub MCP는 `gh` 미설치/특수 케이스(부트스트랩 일괄 등록 등)에만.
+- **PR·이슈 본문은 `.github/` 템플릿 우선** — `.github/pull_request_template.md`와 `.github/ISSUE_TEMPLATE/*.md` 골격을 따른 뒤 추가 정보(위계·검증·Closes)를 자유롭게 덧붙임.
+- **PR 머지 직후 이슈 수동 close** — GitHub의 `Closes #N` 자동 닫힘은 **PR base가 default branch(main/dev)일 때만** 동작한다. 본 프로젝트는 PR 위계 흐름(Task PR → Story 브랜치)을 사용하므로 Task/Story PR 머지 시 자동 close가 동작하지 않는다. **`github` 에이전트는 PR 머지 직후 본문의 `Closes #N`을 파싱해 `gh issue close <N> --reason completed`로 직접 닫고 사용자에게 보고**한다. `Refs: #N`만 있는 통합 커밋은 닫지 않는다. (상세: `.claude/agents/github.md` §PR 절차 4)
 
 ---
 
