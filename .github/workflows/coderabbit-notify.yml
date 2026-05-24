@@ -1,0 +1,144 @@
+# CodeRabbit 리뷰 완료 자동 감지 → 라벨 + 알림 워크플로 (이슈 #81)
+#
+# 목적: CodeRabbit 리뷰가 "완전히" 끝났는지 매번 수동 확인하는 번거로움 제거.
+# 동작(사용자 선택: 라벨 + 알림만, 수정은 수동):
+#   - 조건 충족 시 PR에 `coderabbit-reviewed` 라벨 부착 + 사용자 멘션 알림 코멘트 1회
+#
+# "완전히 완료" 감지 전략:
+#   CodeRabbit은 단일 "완료" 이벤트를 주지 않으므로, 신뢰 신호인 "체크 상태"로 게이트한다.
+#   → head SHA의 모든 체크가 pending이 아니고 success일 때만 진행 (사용자 지시 2026.05.24).
+#   리뷰(pull_request_review)·요약(issue_comment)이 체크 완료보다 먼저 와도, check_suite
+#   completed 이벤트가 재평가를 일으킨다. 커밋 SHA 마커로 dedup해 라운드당 1회만 알린다.
+#
+# ⚠️ 활성화 조건: pull_request_review·issue_comment·check_suite 워크플로는 **default 브랜치
+#   (main)의 정의로만 실행**된다. 본 파일이 main에 도달해야 실제로 발동한다 (가이드 참조).
+name: CodeRabbit Notify
+
+on:
+  # CodeRabbit이 리뷰를 제출할 때
+  pull_request_review:
+    types: [submitted]
+  # CodeRabbit이 요약/노액션 코멘트만 남기는 경우 포착 (리뷰 이벤트가 없을 수 있음)
+  issue_comment:
+    types: [created]
+  # 체크가 리뷰보다 늦게 끝날 때 재평가시키는 트리거 (게이트 핵심)
+  check_suite:
+    types: [completed]
+
+# 같은 PR(또는 커밋)에 대한 동시 실행을 직렬화 — 마커 dedup과 함께 중복 알림 방지
+concurrency:
+  group: coderabbit-notify-${{ github.event.check_suite.head_sha || github.event.pull_request.head.sha || github.event.issue.number }}
+  cancel-in-progress: false
+
+# 라벨·코멘트 쓰기 + 체크/상태 읽기 권한만 (최소 권한 원칙)
+permissions:
+  pull-requests: write
+  issues: write
+  checks: read
+  statuses: read
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: CodeRabbit 완료 판정 → 라벨 + 알림
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const CODERABBIT = 'coderabbitai[bot]';
+            const LABEL = 'coderabbit-reviewed';
+
+            // 1) 이벤트별로 대상 PR 번호 + head SHA 해석
+            //    세 트리거가 payload 모양이 달라 분기해서 추출한다.
+            async function resolvePR() {
+              const e = context.eventName;
+              if (e === 'pull_request_review') {
+                return { number: context.payload.pull_request.number, sha: context.payload.pull_request.head.sha };
+              }
+              if (e === 'issue_comment') {
+                // PR에 달린 코멘트만 대상 (일반 이슈 코멘트는 제외)
+                if (!context.payload.issue.pull_request) return null;
+                const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: context.payload.issue.number });
+                return { number: pr.number, sha: pr.head.sha };
+              }
+              if (e === 'check_suite') {
+                const prs = context.payload.check_suite.pull_requests || [];
+                if (prs.length === 0) return null;
+                return { number: prs[0].number, sha: context.payload.check_suite.head_sha };
+              }
+              return null;
+            }
+
+            // 2) 해당 PR에 CodeRabbit이 실제로 리뷰/코멘트를 남겼는지 확인
+            //    (check_suite 트리거는 CodeRabbit과 무관할 수 있어 활동 여부로 한 번 더 거른다)
+            async function hasCodeRabbitActivity(prNumber) {
+              const reviews = await github.paginate(github.rest.pulls.listReviews, { owner, repo, pull_number: prNumber, per_page: 100 });
+              if (reviews.some((r) => r.user && r.user.login === CODERABBIT)) return true;
+              const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number: prNumber, per_page: 100 });
+              return comments.some((c) => c.user && c.user.login === CODERABBIT);
+            }
+
+            // 3) head SHA의 체크 상태 종합 → 'pending' | 'success' | 'failure'
+            //    체크 런(GitHub Actions·CodeRabbit 등) + 커밋 상태(GitGuardian 등) 둘 다 본다.
+            async function checksState(sha) {
+              const runs = await github.paginate(github.rest.checks.listForRef, { owner, repo, ref: sha, per_page: 100 });
+              // 자기 자신(본 워크플로)은 평가에서 제외 — 교착 방지
+              const relevant = runs.filter((r) => r.name !== 'CodeRabbit Notify');
+              if (relevant.some((r) => r.status !== 'completed')) return 'pending';
+              const runFailed = relevant.some((r) => !['success', 'neutral', 'skipped'].includes(r.conclusion));
+
+              // 레거시 커밋 상태(Statuses API) — 체크 런이 아닌 GitGuardian 등을 포착
+              const { data: combined } = await github.rest.repos.getCombinedStatusForRef({ owner, repo, ref: sha });
+              const hasStatuses = combined.total_count > 0;
+              if (hasStatuses && combined.state === 'pending') return 'pending';
+              const statusFailed = hasStatuses && (combined.state === 'failure' || combined.state === 'error');
+
+              if (runFailed || statusFailed) return 'failure';
+              return 'success';
+            }
+
+            // ── 메인 흐름 ──────────────────────────────────────────────
+            const pr = await resolvePR();
+            if (!pr) { core.info('PR 컨텍스트가 아님 — skip'); return; }
+
+            if (!(await hasCodeRabbitActivity(pr.number))) {
+              core.info(`PR #${pr.number}: CodeRabbit 활동 없음 — skip`);
+              return;
+            }
+
+            // 사용자 지시: 체크가 pending이 아니라 success일 때만 진행
+            const state = await checksState(pr.sha);
+            if (state !== 'success') {
+              core.info(`PR #${pr.number} (${pr.sha.slice(0, 7)}): 체크 상태=${state} — 아직 알림 보류`);
+              return;
+            }
+
+            // 커밋 SHA 마커로 dedup — 같은 라운드(동일 커밋)에 1회만 알림
+            const marker = `<!-- crnotify:${pr.sha} -->`;
+            const existing = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number: pr.number, per_page: 100 });
+            if (existing.some((c) => (c.body || '').includes(marker))) {
+              core.info(`PR #${pr.number} (${pr.sha.slice(0, 7)}): 이미 알림함 — skip`);
+              return;
+            }
+
+            // 라벨이 없으면 생성 후 부착 (addLabels는 미존재 라벨에 실패할 수 있어 보수적으로 처리)
+            try {
+              await github.rest.issues.getLabel({ owner, repo, name: LABEL });
+            } catch {
+              try {
+                await github.rest.issues.createLabel({ owner, repo, name: LABEL, color: 'a371f7', description: 'CodeRabbit 리뷰 + 모든 체크 통과 완료' });
+              } catch (e) { core.info(`라벨 생성 생략: ${e.message}`); }
+            }
+            await github.rest.issues.addLabels({ owner, repo, issue_number: pr.number, labels: [LABEL] });
+
+            // 알림 코멘트 — 저장소 소유자를 멘션 (개인 저장소는 owner == 사용자)
+            const body = [
+              marker,
+              `🤖 **CodeRabbit 리뷰 + 모든 체크 통과 완료** — 커밋 \`${pr.sha.slice(0, 7)}\``,
+              '',
+              `@${owner} 이제 \`리뷰 확인\`을 입력하면 코멘트를 점검·반영합니다.`,
+            ].join('\n');
+            await github.rest.issues.createComment({ owner, repo, issue_number: pr.number, body });
+            core.info(`PR #${pr.number} (${pr.sha.slice(0, 7)}): 라벨 + 알림 완료`);

@@ -28,6 +28,12 @@
   - `hook-verify` 잡: `.husky/pre-commit` 실행 권한 + `lint-staged` 호출 가능성 + PR diff 대상 dry run
 - 설정 가이드 [`../06-setup/git-hooks.md`](../06-setup/git-hooks.md), [`../06-setup/github-actions.md`](../06-setup/github-actions.md)
 - 기술 근거 [`../07-tech-rationale/README.md`](../07-tech-rationale/README.md) §12 (Husky · lint-staged · GitHub Actions)
+- **CodeRabbit 리뷰 완료 자동 감지 워크플로** (이슈 #81, 2026.05.24): `.github/workflows/coderabbit-notify.yml` 신규. CodeRabbit 리뷰가 **완전히** 끝났는지 매번 수동 확인하던 비용 제거.
+  - **트리거:** `pull_request_review`(submitted) + `issue_comment`(created) + `check_suite`(completed)
+  - **완료 감지(사용자 지시):** head SHA의 모든 체크가 **pending이 아니라 success일 때만** 진행 — Checks API + Statuses API 종합 판정. 리뷰가 체크보다 먼저 와도 `check_suite completed`가 재평가, 커밋 SHA 마커로 라운드당 1회만 알림(dedup), 무한 루프 없음(GITHUB_TOKEN 코멘트는 재트리거 안 됨)
+  - **동작(사용자 선택, 라벨 + 알림만):** `coderabbit-reviewed` 라벨 부착 + 소유자 멘션 알림 코멘트. 코드 수정은 수동. auto-fix(`anthropics/claude-code-action` + `CLAUDE_CODE_OAUTH_TOKEN`)는 가이드에 업그레이드 절차로 문서화(현재 비활성)
+  - 설정 가이드 [`../06-setup/github-actions-coderabbit-notify.md`](../06-setup/github-actions-coderabbit-notify.md) (8개 표준 섹션) + `docs/06-setup/README.md` 인덱스 갱신
+  - ⚠️ **활성화 조건:** 이 이벤트 워크플로들은 default 브랜치(`main`)의 정의로만 실행 → main 도달 후 발동 (가이드 §7)
 
 ### Changed
 - **인터페이스 `I` 접두사 + 블록 주석 컨벤션 영구 적용** (사용자 영구 원칙, PR #63 리뷰 + 2026.05.20): TypeScript `interface`는 항상 `I` 접두사(예: `ISearchInputProps`), `type`/컴포넌트는 영향 없음. 새 코드 블록(함수·effect·분기·jsx·테스트)마다 한국어 주석 필수(교육·포트폴리오 목적, 보안 우려 없음). `CLAUDE.md` §5·`.claude/agents/code.md`·글로벌 `project-bootstrap`·사용자 메모리(`feedback_interface_i_prefix.md`, `feedback_block_comments_required.md`)에 명문화.
