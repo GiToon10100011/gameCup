@@ -95,6 +95,9 @@
 - **Task #17 — 후보 목록 store 검증** (Story #7 / F-04·F-05, 2026.05.25):
   - `tests/unit/stateStore.candidates.test.ts` 신규 (7 tests) — 후보 store(`candidates`/`addCandidate`/`removeCandidate`/`getCandidates`) 동작 검증: 초기 빈 배열 / 등록 성공(true) / **중복 id 등록 거부(false, F-04)** / 서로 다른 id 누적 / 불변 업데이트(새 배열 참조) / 삭제 해당 id만(F-05)·없는 id 무변화 / resetAll 초기화·재등록.
   - 후보 store 자체(`candidates: IGame[]` + 액션)는 이미 UML v1.1 §StateStore와 일치하게 스캐폴딩돼 있었으며, 본 Task에서 store 레벨 동작 보증을 추가(#11/#12와 동일 패턴).
+- **Task #18 — 후보 등록 액션(candidateModule.addToPool) 테스트** (Story #7 / F-03·F-04, 2026.05.25):
+  - `tests/unit/candidateModule.test.ts` — `it.todo` 스텁을 실테스트로 구현(addToPool 부분): 신규 등록 시 `{ ok: true }`+추가(F-03) / 중복 id 시 `{ ok: false, reason: "duplicate" }`+무시(F-04) / 서로 다른 게임 연속 등록 성공. `removeFromPool`(#21)·`canStartTournament`(토너먼트)는 todo 유지.
+  - 등록 액션 `addToPool`(store `addCandidate`를 discriminated union 결과로 래핑)은 Business 레이어에 이미 존재했고, 본 Task에서 동작(특히 F-04 중복 사유 반환) 검증을 추가.
 
 ### Deprecated
 - _(없음.)_
