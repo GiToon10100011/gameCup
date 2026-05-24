@@ -3,9 +3,9 @@
  * View는 직접 외부 API를 호출하지 않고 항상 본 모듈을 경유한다.
  */
 
-import { fetchGames } from "@/lib/externalApiClient";
+import { ExternalApiError, fetchGames } from "@/lib/externalApiClient";
 import { useStateStore } from "@/store/stateStore";
-import type { IGame } from "@/types/game";
+import type { IApiError, IGame } from "@/types/game";
 import { measureAsync } from "@/utils/measureAsync";
 
 /**
@@ -99,4 +99,49 @@ export async function search(query: string): Promise<IGame[]> {
   // 4) 성공 결과만 캐시에 저장 — 실패는 measureAsync에서 throw로 빠져나가 여기에 도달하지 않음
   store.setCache(query, results);
   return results;
+}
+
+/**
+ * 임의의 throw 값을 표준 IApiError 형태로 정규화한다 (Issue #14).
+ *
+ * 사용자에게 보여줄 인라인 메시지(#15 ErrorMessage)와 상태 저장은 항상 `{ message, statusCode }`
+ * 형태를 전제로 하므로, 어떤 예외가 올라오든 이 함수가 단일 진입점에서 형태를 통일한다.
+ */
+export function toApiError(error: unknown): IApiError {
+  // 1) 우리가 던진 표준 에러 — statusCode(HTTP 상태/0)를 그대로 보존해 호출자가 분기 가능
+  if (error instanceof ExternalApiError) {
+    return { message: error.message, statusCode: error.statusCode };
+  }
+
+  // 2) 그 외 일반 Error(네트워크 끊김 등) — 메시지는 살리되 HTTP 의미가 없으므로 statusCode 0
+  if (error instanceof Error) {
+    return { message: error.message, statusCode: 0 };
+  }
+
+  // 3) 문자열·객체 등 Error가 아닌 throw — 신뢰할 메시지가 없어 사용자용 기본 문구로 대체
+  return { message: "알 수 없는 오류가 발생했습니다.", statusCode: 0 };
+}
+
+/**
+ * 에러 처리를 입힌 검색 진입점 (Issue #14, Story #6 / F-11).
+ *
+ * `search()`는 실패 시 예외를 그대로 던지지만, View 경로(useSearchQuery)는 예외 대신
+ * "안전한 빈 결과 + 상태에 반영된 에러"를 원한다. 본 함수가 그 경계를 담당한다:
+ *   - 성공: 이전 에러 상태를 해제(clearApiError)하고 결과를 그대로 반환
+ *   - 실패: toApiError로 정규화해 store.apiError에 반영하고 **빈 배열**을 반환
+ *           (UI는 크래시 없이 정상 동작을 유지 — Story #6 / #16 "오류 상태 안정성")
+ */
+export async function searchWithErrorHandling(query: string): Promise<IGame[]> {
+  const store = useStateStore.getState();
+  try {
+    // 1) 정상 흐름 — 성공하면 직전 에러 배너를 걷어내고 결과 반환
+    const results = await search(query);
+    store.clearApiError();
+    return results;
+  } catch (error) {
+    // 2) 실패 흐름 — 형태를 통일해 상태에 반영. ErrorMessage(#15)가 이 값을 구독한다.
+    store.setApiError(toApiError(error));
+    // 3) graceful degradation — 빈 결과로 호출자가 그대로 렌더할 수 있게 한다.
+    return [];
+  }
 }
