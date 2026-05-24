@@ -42,6 +42,7 @@ describe("오류 상태 안정성 (#16, F-11)", () => {
   });
 
   afterEach(() => {
+    // 테스트 간 DOM·mock·spy 상태 누수를 차단해 각 케이스의 독립성을 보장한다.
     cleanup();
     vi.clearAllMocks();
     vi.restoreAllMocks();
