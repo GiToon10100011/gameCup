@@ -4,7 +4,7 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
-import { search } from "@/modules/searchModule";
+import { searchWithErrorHandling } from "@/modules/searchModule";
 import type { IGame } from "@/types/game";
 
 /**
@@ -24,8 +24,11 @@ export function useSearchQuery(debouncedQuery: string) {
     /* queryKey는 캐시 키 — 정규화된 쿼리로 격리해 "  zelda" / "zelda" / "zelda  "가 동일 키로 합쳐짐 */
     queryKey: ["games", normalizedQuery],
 
-    /* 실제 검색 — Business layer(searchModule)에 위임. 정규화된 값을 전달해 캐시 키와 일치 */
-    queryFn: () => search(normalizedQuery),
+    /* 실제 검색 — Business layer(searchModule)에 위임. 정규화된 값을 전달해 캐시 키와 일치.
+     * 에러 처리(Issue #14): search() 대신 searchWithErrorHandling()을 호출해
+     * API 실패를 store.apiError로 반영하고 빈 배열을 받는다 → useQuery는 성공으로 처리되고
+     * 오류 안내는 ErrorMessage(#15)가 store를 구독해 표시한다 (UI 크래시 없이 안정 동작). */
+    queryFn: () => searchWithErrorHandling(normalizedQuery),
 
     /* 빈 검색어이면 비활성화 — normalizedQuery 길이 0이면 useQuery가 호출 자체를 건너뜀 */
     enabled: normalizedQuery.length > 0,

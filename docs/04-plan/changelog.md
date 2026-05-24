@@ -76,6 +76,22 @@
   - `tests/unit/components/search/SearchInput.test.tsx`: 호출 횟수(`toHaveBeenCalledTimes(1)`) 단언 추가 — 회귀 방지
   - **기각:** 모든 `//` 주석을 `/* */` 블록 주석으로 강제 변환 제안 — 코드 블록마다 한국어 주석 정책은 형식이 아니라 위치를 강제하므로 현재 혼합 방식 유지 (사용자 결정)
   - **후속 이슈로 분리(#75):** `candidateModule`/`tournamentModule`/`useDebounce`의 `it.todo` 테스트 실구현 — 각 모듈의 본 구현 Task(#17, #23 등)와 함께 진행
+- **Task #14 — API 호출 에러 핸들러 (try/catch + 상태 반영)** (Story #6 / F-11, 2026.05.24):
+  - `src/store/stateStore.ts`: API 에러 상태 `apiError: IApiError | null` 필드 + `setApiError`/`clearApiError` 액션 추가. `initialState`에 포함돼 `resetAll`에서 함께 초기화. **(UML v1.1 §StateStore 시그니처 변경 → UML v1.2 분기 시 반영 대상)**
+  - `src/modules/searchModule.ts`: `toApiError(error: unknown): IApiError` — 임의 throw 값을 표준 에러 형태로 정규화(`ExternalApiError`는 statusCode 보존, 일반 Error는 0, 그 외는 기본 문구). `searchWithErrorHandling(query)` — `search()`를 try/catch로 감싸 성공 시 `clearApiError`+결과 반환, 실패 시 `setApiError`+빈 배열 반환(graceful degradation, #16 오류 상태 안정성). **(UML §SearchModule 시그니처 변경 → UML v1.2 반영 대상)**
+  - `src/hooks/useSearchQuery.ts`: `queryFn`을 `search` → `searchWithErrorHandling`로 교체 — 실제 View 호출 경로에서 에러가 store에 반영되도록 연결(ErrorMessage #15가 구독 예정)
+  - `tests/unit/stateStore.error.test.ts` 신규 (5 tests) — apiError 초기 null / 반영·조회 / clear·setApiError(null) 해제 / resetAll 초기화
+  - `tests/unit/searchModule.error.test.ts` 신규 (8 tests) — toApiError 3종 정규화 / 성공 시 결과+에러 해제 / 실패 시 빈 배열+상태 반영 / 실패 결과 캐시 미저장 / 실패→재시도 성공 복귀
+- **Task #15 — ErrorMessage 컴포넌트 (인라인 오류 표시)** (Story #6 / F-11, 2026.05.24):
+  - `src/components/ui/ErrorMessage.tsx`: `store.apiError`(Task #14)를 구독해 오류가 있으면 인라인 alert 표시, 없으면 렌더 안 함. `role="alert"`+`aria-live="assertive"`로 즉시 통지, statusCode>0일 때만 보조 코드 표기, 닫기(✕) 버튼은 `clearApiError` 호출. 3계층 준수(View는 store 상태만 구독).
+  - `src/components/ui/ErrorMessage.variants.ts`: tailwind-variants 분리(컨벤션). **디자인 기준 `docs/03-design/DESIGN.md`(getdesign `clickhouse`)의 error 토큰 `#ef4444`(red-500 계열)** 적용. 닫기 버튼은 **a11y 오버라이드로 터치 타겟 ≥44×44px(`h-11 w-11`)** — ClickHouse 템플릿 36px가 WCAG 2.5.5 미만이라 인터랙티브 요소는 상향.
+  - `tests/unit/components/ui/ErrorMessage.test.tsx` 신규 (6 tests) — null 미렌더 / role=alert 메시지 / statusCode 표기 분기 / 닫기→해제 / dismissible=false.
+- **Task #16 — 오류 상태 안정성 테스트** (Story #6 / F-11, 2026.05.25):
+  - `tests/unit/error-state-stability.test.tsx` 신규 (5 tests) — searchModule(`searchWithErrorHandling`) + stateStore(`apiError`) + ErrorMessage 컴포넌트 통합 검증: ① API 실패가 예외로 전파되지 않고 `[]`로 안전 응답 ② 오류가 기존 캐시·후보 상태를 훼손하지 않음 ③ 오류→ErrorMessage 자동 표시→성공 검색 시 배너 사라짐(라이브 구독, `act`로 재렌더 flush) ④ 연속 실패에도 매번 응답하며 최신 오류 반영 ⑤ 오류 중에도 후보 등록·삭제 등 다른 store 동작 정상.
+  - Story #6(API 오류 안내) 자식 Task #14·#15·#16 **전부 완료** → Epic #1 통합 준비.
+- **Story #6 통합 PR #88 리뷰 반영** (CodeRabbit Major 2건, 2026.05.25):
+  - **3계층 준수:** `src/hooks/useApiError.ts` 신규 — Presentation(ErrorMessage)이 `stateStore`(Data)를 직접 구독하던 것을 Business 브릿지 훅으로 분리(useSearchQuery와 동일 패턴). `ErrorMessage.tsx`는 `useApiError()`만 의존.
+  - **동시 요청 레이스 가드:** `searchModule.ts`에 `latestSearchRequestId` 도입 — `searchWithErrorHandling`이 자기 요청이 최신일 때만 `store`에 상태 반영. 늦게 끝난 과거 실패가 최신 성공의 `clearApiError`를 덮어쓰는 문제 차단. `searchModule.error.test.ts`에 레이스 가드 테스트 1건 추가.
 
 ### Deprecated
 - _(없음.)_
