@@ -82,6 +82,10 @@
   - `src/hooks/useSearchQuery.ts`: `queryFn`을 `search` → `searchWithErrorHandling`로 교체 — 실제 View 호출 경로에서 에러가 store에 반영되도록 연결(ErrorMessage #15가 구독 예정)
   - `tests/unit/stateStore.error.test.ts` 신규 (5 tests) — apiError 초기 null / 반영·조회 / clear·setApiError(null) 해제 / resetAll 초기화
   - `tests/unit/searchModule.error.test.ts` 신규 (8 tests) — toApiError 3종 정규화 / 성공 시 결과+에러 해제 / 실패 시 빈 배열+상태 반영 / 실패 결과 캐시 미저장 / 실패→재시도 성공 복귀
+- **Task #15 — ErrorMessage 컴포넌트 (인라인 오류 표시)** (Story #6 / F-11, 2026.05.24):
+  - `src/components/ui/ErrorMessage.tsx`: `store.apiError`(Task #14)를 구독해 오류가 있으면 인라인 alert 표시, 없으면 렌더 안 함. `role="alert"`+`aria-live="assertive"`로 즉시 통지, statusCode>0일 때만 보조 코드 표기, 닫기(✕) 버튼은 `clearApiError` 호출. 3계층 준수(View는 store 상태만 구독).
+  - `src/components/ui/ErrorMessage.variants.ts`: tailwind-variants 분리(컨벤션). **디자인 기준 `docs/03-design/DESIGN.md`(getdesign `clickhouse`)의 error 토큰 `#ef4444`(red-500 계열)** 적용. 닫기 버튼은 **a11y 오버라이드로 터치 타겟 ≥44×44px(`h-11 w-11`)** — ClickHouse 템플릿 36px가 WCAG 2.5.5 미만이라 인터랙티브 요소는 상향.
+  - `tests/unit/components/ui/ErrorMessage.test.tsx` 신규 (6 tests) — null 미렌더 / role=alert 메시지 / statusCode 표기 분기 / 닫기→해제 / dismissible=false.
 
 ### Deprecated
 - _(없음.)_
