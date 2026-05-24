@@ -7,7 +7,7 @@
 // 디자인 기준: docs/03-design/DESIGN.md(getdesign `clickhouse`)의 warning 토큰(#f59e0b, amber).
 // 접근성: 오류(alert)보다 덜 긴급하므로 role="status" + aria-live="polite"로 통지.
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { duplicateToastVariants } from "@/components/candidate/DuplicateToast.variants";
 
 // DuplicateToast의 외부 인터페이스. 컨벤션: 모든 `interface`는 `I` 접두사.
@@ -33,12 +33,20 @@ export function DuplicateToast({
   onClose,
   durationMs = 3000,
 }: IDuplicateToastProps) {
-  // open이 true인 동안 durationMs 타이머를 걸어 자동 닫힘. open/duration 변경 시 재설정, 언마운트 시 정리.
+  // onClose의 최신 참조를 ref에 유지 (PR #91 리뷰 반영, latest-ref 패턴).
+  // 타이머 effect가 onClose "정체성"에 의존하면, 부모가 인라인 함수를 넘길 때 매 렌더마다
+  // effect가 재실행돼 타이머가 계속 리셋 → 토스트가 영구히 안 닫히는 버그가 생긴다. ref로 분리.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  // open이 true인 동안 durationMs 타이머를 걸어 자동 닫힘. open/duration 변경 시에만 재설정, 언마운트 시 정리.
   useEffect(() => {
     if (!open) return;
-    const timer = setTimeout(onClose, durationMs);
+    const timer = setTimeout(() => onCloseRef.current(), durationMs);
     return () => clearTimeout(timer);
-  }, [open, durationMs, onClose]);
+  }, [open, durationMs]);
 
   // 닫힌 상태면 DOM에 흔적을 남기지 않는다
   if (!open) return null;

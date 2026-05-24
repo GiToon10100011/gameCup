@@ -75,4 +75,34 @@ describe("DuplicateToast (#19, F-04)", () => {
     });
     expect(onClose).not.toHaveBeenCalled();
   });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 6) 인라인 onClose 재전달(부모 리렌더)에도 타이머가 리셋되지 않고 최신 onClose가 호출된다
+  //    — latest-ref 패턴 회귀 검증 (PR #91 리뷰)
+  // ───────────────────────────────────────────────────────────────────────────
+  it("렌더마다 새 onClose가 전달돼도 타이머는 리셋되지 않고, 최신 onClose가 1회 호출된다", () => {
+    const onCloseA = vi.fn();
+    const onCloseB = vi.fn();
+
+    // 최초 마운트: durationMs=3000, onCloseA
+    const { rerender } = render(<DuplicateToast open onClose={onCloseA} durationMs={3000} />);
+
+    // 1.5초 경과 — 아직 미발동
+    act(() => {
+      vi.advanceTimersByTime(1500);
+    });
+    expect(onCloseA).not.toHaveBeenCalled();
+
+    // 부모 리렌더가 새 인라인 함수(onCloseB)를 전달 — ref 패턴이면 타이머는 리셋되지 않아야 함
+    rerender(<DuplicateToast open onClose={onCloseB} durationMs={3000} />);
+
+    // 추가 1.5초(총 3초) 경과 — 원래 타이머가 그대로 만료되어야 함(리셋이었다면 아직 안 끝남)
+    act(() => {
+      vi.advanceTimersByTime(1500);
+    });
+
+    // 타이머 미리셋 증거: 총 3초 시점에 발동. 그리고 호출 대상은 최신 ref(onCloseB).
+    expect(onCloseB).toHaveBeenCalledTimes(1);
+    expect(onCloseA).not.toHaveBeenCalled();
+  });
 });
