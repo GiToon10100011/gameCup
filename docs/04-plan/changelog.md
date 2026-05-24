@@ -10,6 +10,10 @@
 코드 작업 중 발견된 PRD/설계 이탈 사항을 누적 기록한다. 충분히 쌓이면 [`../05-process/iteration-template.md`](../05-process/iteration-template.md)를 복사해 `01-prd/iteration-4.md` 등을 분기 생성한다.
 
 ### Added
+- **운영 도구: Linear 워크스페이스 보조 도입** (2026.05.23, 이슈 #76) — GameCup 팀(team id `eee1389e-3647-44fa-b1b1-64d123c102dc`) 신규 세팅. 주 트래커는 여전히 **GitHub Issues**이며, Linear는 이터레이션 단위 운영 시각화를 보조하기 위한 **별도 워크스페이스**로 운용한다.
+- **설정 가이드 신규:** [`../06-setup/linear-cycles.md`](../06-setup/linear-cycles.md) 추가. Linear Cycle(Sprint) cadence 초기화(4주·일요일 시작·첫 사이클 2026-05-24·미리 생성 1·cooldown 0) 절차와 검증 체크리스트. 8개 표준 섹션 포함.
+- **인덱스 갱신:** [`../06-setup/README.md`](../06-setup/README.md) 가이드 목록 표에 `linear-cycles.md` 행 추가 (도입 시점: Phase 0 후속 / 2026.05.21, 상태: 활성).
+- **Linear Cycle cadence 적용 완료** (2026-05-24 발효, `list_cycles` 검증): GameCup 팀(`eee1389e-…`) 사이클을 **4주·일요일 시작**으로 전환. Cycle 1 `startsAt=2026-05-23T15:00:00Z`(KST 2026-05-24 00:00)·`isCurrent: true` 실측 확인. 첫 사이클은 Linear의 주 경계 정렬로 **29일**(2026-05-24~06-22), Cycle 2부터 정확히 28일. 미래 사이클은 Linear가 Cycle 2·3을 자동 선생성(요청 1개와 무관한 기본 동작).
 - **글로벌 에이전트 `project-bootstrap`** 신규 — 모든 신규 프로젝트의 PRD→이슈 분해·GitHub MCP 등록·docs 구조 자동 부트스트랩 담당. 위치: `~/.claude/agents/project-bootstrap.md` (사용자 레벨, 모든 프로젝트 공용). **프로필 시스템(mini/lite/standard/full)** 도입 — default `lite`, 매번 확인.
 - **글로벌 에이전트 `docs-builder`** 신규 — PRD/아이디어 기반 후속 문서(API 명세·용어집·ADR·테스트 계획·페르소나·DB 스키마·모듈 설계·아키텍처 문서 등) 단계적 확장. 전담 영역(PRD/UML/UC)은 기존 에이전트에 위임 안내. 위치: `~/.claude/agents/docs-builder.md`
 - **`docs/04-plan/issues.md`** — 루트의 `issues.md`를 docs 트리 안으로 이동·정리 (청사진 위치 표준화)
