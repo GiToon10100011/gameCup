@@ -92,6 +92,9 @@
 - **Story #6 통합 PR #88 리뷰 반영** (CodeRabbit Major 2건, 2026.05.25):
   - **3계층 준수:** `src/hooks/useApiError.ts` 신규 — Presentation(ErrorMessage)이 `stateStore`(Data)를 직접 구독하던 것을 Business 브릿지 훅으로 분리(useSearchQuery와 동일 패턴). `ErrorMessage.tsx`는 `useApiError()`만 의존.
   - **동시 요청 레이스 가드:** `searchModule.ts`에 `latestSearchRequestId` 도입 — `searchWithErrorHandling`이 자기 요청이 최신일 때만 `store`에 상태 반영. 늦게 끝난 과거 실패가 최신 성공의 `clearApiError`를 덮어쓰는 문제 차단. `searchModule.error.test.ts`에 레이스 가드 테스트 1건 추가.
+- **Task #17 — 후보 목록 store 검증** (Story #7 / F-04·F-05, 2026.05.25):
+  - `tests/unit/stateStore.candidates.test.ts` 신규 (7 tests) — 후보 store(`candidates`/`addCandidate`/`removeCandidate`/`getCandidates`) 동작 검증: 초기 빈 배열 / 등록 성공(true) / **중복 id 등록 거부(false, F-04)** / 서로 다른 id 누적 / 불변 업데이트(새 배열 참조) / 삭제 해당 id만(F-05)·없는 id 무변화 / resetAll 초기화·재등록.
+  - 후보 store 자체(`candidates: IGame[]` + 액션)는 이미 UML v1.1 §StateStore와 일치하게 스캐폴딩돼 있었으며, 본 Task에서 store 레벨 동작 보증을 추가(#11/#12와 동일 패턴).
 
 ### Deprecated
 - _(없음.)_
