@@ -40,6 +40,7 @@ describe("candidateModule (UT-10)", () => {
     });
 
     it("서로 다른 게임은 연속 등록이 모두 성공한다", () => {
+      // 서로 다른 id는 중복이 아니므로 등록이 모두 성공하고 순서대로 누적되어야 한다.
       expect(addToPool(mkGame("1"))).toEqual({ ok: true });
       expect(addToPool(mkGame("2"))).toEqual({ ok: true });
 
