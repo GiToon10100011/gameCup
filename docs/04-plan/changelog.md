@@ -28,6 +28,10 @@
   - `hook-verify` 잡: `.husky/pre-commit` 실행 권한 + `lint-staged` 호출 가능성 + PR diff 대상 dry run
 - 설정 가이드 [`../06-setup/git-hooks.md`](../06-setup/git-hooks.md), [`../06-setup/github-actions.md`](../06-setup/github-actions.md)
 - 기술 근거 [`../07-tech-rationale/README.md`](../07-tech-rationale/README.md) §12 (Husky · lint-staged · GitHub Actions)
+- **UI 디자인 기준 문서 `DESIGN.md` 사전 보관** (사용자 지시 2026.05.24, 이슈 #79): `getdesign` CLI(`npx getdesign@latest add clickhouse`)가 생성하는 ClickHouse 영감 디자인 토큰(블랙 캔버스 + 일렉트릭 옐로우, Inter 타이포, 색/타이포/간격/컴포넌트 스펙)을 [`../03-design/DESIGN.md`](../03-design/DESIGN.md)로 보관. UI(컴포넌트·화면) 제작 전 단일 디자인 기준으로 참조한다.
+  - `CLAUDE.md` §5 코딩 컨벤션에 "UI 디자인 기준" 행 추가 — UI 신규 제작·수정 전 `DESIGN.md` 참조 의무화, 토큰 갱신은 `getdesign` 재생성 후 `docs/03-design/`로 이동
+  - `docs/README.md` — 03-design 행에 `DESIGN.md` 추가 + 빠른 진입점에 "🎨 UI 디자인 기준" 링크
+  - 사용자 메모리 `feedback_ui_getdesign_clickhouse.md` 신설 ([[feedback-variants-separate-file]]와 함께 UI 작업 시 적용)
 - **CodeRabbit 리뷰 완료 자동 감지 워크플로** (이슈 #81, 2026.05.24): `.github/workflows/coderabbit-notify.yml` 신규. CodeRabbit 리뷰가 **완전히** 끝났는지 매번 수동 확인하던 비용 제거.
   - **트리거:** `pull_request_review`(submitted) + `issue_comment`(created) + `check_suite`(completed)
   - **완료 감지(사용자 지시):** head SHA의 모든 체크가 **pending이 아니라 success일 때만** 진행 — Checks API + Statuses API 종합 판정. 리뷰가 체크보다 먼저 와도 `check_suite completed`가 재평가, 커밋 SHA 마커로 라운드당 1회만 알림(dedup), 무한 루프 없음(GITHUB_TOKEN 코멘트는 재트리거 안 됨)
