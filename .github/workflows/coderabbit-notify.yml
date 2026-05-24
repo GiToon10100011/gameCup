@@ -52,7 +52,6 @@ jobs:
         with:
           script: |
             const { owner, repo } = context.repo;
-            const CODERABBIT = 'coderabbitai[bot]';
             const LABEL = 'coderabbit-reviewed';
 
             // 1) 이벤트별로 대상 PR 번호 + head SHA 해석
@@ -76,23 +75,35 @@ jobs:
               return null;
             }
 
-            // 2) 해당 PR에 CodeRabbit이 실제로 리뷰/코멘트를 남겼는지 확인
-            //    (check_suite 트리거는 CodeRabbit과 무관할 수 있어 활동 여부로 한 번 더 거른다)
-            async function hasCodeRabbitActivity(prNumber) {
-              const reviews = await github.paginate(github.rest.pulls.listReviews, { owner, repo, pull_number: prNumber, per_page: 100 });
-              if (reviews.some((r) => r.user && r.user.login === CODERABBIT)) return true;
-              const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number: prNumber, per_page: 100 });
-              return comments.some((c) => c.user && c.user.login === CODERABBIT);
-            }
-
-            // 3) head SHA의 체크 상태 종합 → 'pending' | 'success' | 'failure'
+            // 2) head SHA의 체크 상태 종합 → 'pending' | 'success' | 'failure'
+            //    (PR #82 리뷰 반영) "완료"를 head SHA에 결박한다:
+            //      · 같은 체크의 과거 런이 함께 와도 app.id+name별 **최신 1개**만 평가 (재시도 후 성공 오판 방지)
+            //      · 이 SHA에 **CodeRabbit 체크 런이 존재**해야 "이 커밋을 리뷰함"으로 인정
+            //        (PR 단위 활동만 보면 이전 커밋 활동으로 새 커밋이 통과하는 문제를 차단)
             //    체크 런(GitHub Actions·CodeRabbit 등) + 커밋 상태(GitGuardian 등) 둘 다 본다.
             async function checksState(sha) {
               const runs = await github.paginate(github.rest.checks.listForRef, { owner, repo, ref: sha, per_page: 100 });
               // 자기 자신(본 워크플로)은 평가에서 제외 — 교착 방지
               const relevant = runs.filter((r) => r.name !== 'CodeRabbit Notify');
-              if (relevant.some((r) => r.status !== 'completed')) return 'pending';
-              const runFailed = relevant.some((r) => !['success', 'neutral', 'skipped'].includes(r.conclusion));
+
+              // 같은 체크(app.id+name)의 최신 런 1개만 남긴다 — 과거 실패 런이 섞여 오판하지 않도록
+              const latestByKey = new Map();
+              for (const r of relevant) {
+                const key = `${r.app?.id ?? 'na'}:${r.name}`;
+                const ts = Date.parse(r.started_at || r.created_at || '') || 0;
+                const prev = latestByKey.get(key);
+                const prevTs = prev ? (Date.parse(prev.started_at || prev.created_at || '') || 0) : -1;
+                if (!prev || ts >= prevTs) latestByKey.set(key, r);
+              }
+              const latest = [...latestByKey.values()];
+
+              // 이 커밋에 대한 CodeRabbit 체크 런이 아직 없으면 "완료 아님(pending)"으로 본다 — head SHA 결박
+              const isCodeRabbit = (r) => /coderabbit/i.test(r.name || '') || /coderabbit/i.test(r.app?.slug || '');
+              if (!latest.some(isCodeRabbit)) return 'pending';
+
+              // 최신 런 기준 미완료/실패 판정
+              if (latest.some((r) => r.status !== 'completed')) return 'pending';
+              const runFailed = latest.some((r) => !['success', 'neutral', 'skipped'].includes(r.conclusion));
 
               // 레거시 커밋 상태(Statuses API) — 체크 런이 아닌 GitGuardian 등을 포착
               const { data: combined } = await github.rest.repos.getCombinedStatusForRef({ owner, repo, ref: sha });
@@ -108,12 +119,9 @@ jobs:
             const pr = await resolvePR();
             if (!pr) { core.info('PR 컨텍스트가 아님 — skip'); return; }
 
-            if (!(await hasCodeRabbitActivity(pr.number))) {
-              core.info(`PR #${pr.number}: CodeRabbit 활동 없음 — skip`);
-              return;
-            }
-
-            // 사용자 지시: 체크가 pending이 아니라 success일 때만 진행
+            // 사용자 지시: 체크가 pending이 아니라 success일 때만 진행.
+            // checksState가 head SHA에 CodeRabbit 체크 런 존재까지 강제하므로,
+            // "이 커밋에 대한 CodeRabbit 리뷰가 끝났고 모든 체크가 통과"일 때만 success가 된다.
             const state = await checksState(pr.sha);
             if (state !== 'success') {
               core.info(`PR #${pr.number} (${pr.sha.slice(0, 7)}): 체크 상태=${state} — 아직 알림 보류`);
