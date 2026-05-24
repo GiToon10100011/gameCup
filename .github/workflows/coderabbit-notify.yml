@@ -30,20 +30,25 @@ concurrency:
   group: coderabbit-notify-${{ github.event.check_suite.head_sha || github.event.pull_request.head.sha || github.event.issue.number }}
   cancel-in-progress: false
 
-# 라벨·코멘트 쓰기 + 체크/상태 읽기 권한만 (최소 권한 원칙)
+# 최상위는 읽기 전용 — 쓰기 권한은 실제 필요한 job에만 부여한다.
+# (PR #82 리뷰 반영: 전역 write는 과권한이며 미래 job에 상속되므로 job 범위로 축소)
 permissions:
-  pull-requests: write
-  issues: write
-  checks: read
-  statuses: read
   contents: read
 
 jobs:
   notify:
     runs-on: ubuntu-latest
+    # job 범위 최소 권한 — 각 권한의 실제 사용처를 주석으로 명시 (zizmor undocumented-permissions 대응)
+    permissions:
+      pull-requests: write # PR 대화 코멘트 생성 (issues.createComment 대상이 PR 번호 → write 필요)
+      issues: write        # PR 라벨 부착·생성 (issues.addLabels / createLabel)
+      checks: read         # 체크 런 조회 (checks.listForRef)
+      statuses: read       # 커밋 상태 조회 (repos.getCombinedStatusForRef)
+      contents: read       # 기본 메타데이터 읽기
     steps:
       - name: CodeRabbit 완료 판정 → 라벨 + 알림
-        uses: actions/github-script@v7
+        # 공급망 보안: 부동 태그(@v7) 대신 v7 커밋 SHA로 핀 (PR #82 리뷰 반영, SHA 직접 검증)
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             const { owner, repo } = context.repo;
