@@ -76,6 +76,12 @@
   - `tests/unit/components/search/SearchInput.test.tsx`: 호출 횟수(`toHaveBeenCalledTimes(1)`) 단언 추가 — 회귀 방지
   - **기각:** 모든 `//` 주석을 `/* */` 블록 주석으로 강제 변환 제안 — 코드 블록마다 한국어 주석 정책은 형식이 아니라 위치를 강제하므로 현재 혼합 방식 유지 (사용자 결정)
   - **후속 이슈로 분리(#75):** `candidateModule`/`tournamentModule`/`useDebounce`의 `it.todo` 테스트 실구현 — 각 모듈의 본 구현 Task(#17, #23 등)와 함께 진행
+- **Task #14 — API 호출 에러 핸들러 (try/catch + 상태 반영)** (Story #6 / F-11, 2026.05.24):
+  - `src/store/stateStore.ts`: API 에러 상태 `apiError: IApiError | null` 필드 + `setApiError`/`clearApiError` 액션 추가. `initialState`에 포함돼 `resetAll`에서 함께 초기화. **(UML v1.1 §StateStore 시그니처 변경 → UML v1.2 분기 시 반영 대상)**
+  - `src/modules/searchModule.ts`: `toApiError(error: unknown): IApiError` — 임의 throw 값을 표준 에러 형태로 정규화(`ExternalApiError`는 statusCode 보존, 일반 Error는 0, 그 외는 기본 문구). `searchWithErrorHandling(query)` — `search()`를 try/catch로 감싸 성공 시 `clearApiError`+결과 반환, 실패 시 `setApiError`+빈 배열 반환(graceful degradation, #16 오류 상태 안정성). **(UML §SearchModule 시그니처 변경 → UML v1.2 반영 대상)**
+  - `src/hooks/useSearchQuery.ts`: `queryFn`을 `search` → `searchWithErrorHandling`로 교체 — 실제 View 호출 경로에서 에러가 store에 반영되도록 연결(ErrorMessage #15가 구독 예정)
+  - `tests/unit/stateStore.error.test.ts` 신규 (5 tests) — apiError 초기 null / 반영·조회 / clear·setApiError(null) 해제 / resetAll 초기화
+  - `tests/unit/searchModule.error.test.ts` 신규 (8 tests) — toApiError 3종 정규화 / 성공 시 결과+에러 해제 / 실패 시 빈 배열+상태 반영 / 실패 결과 캐시 미저장 / 실패→재시도 성공 복귀
 
 ### Deprecated
 - _(없음.)_

@@ -2,7 +2,7 @@
 // UML v1.1 §StateStore 클래스와 1:1 매핑되며, 검색 캐시 + 후보 + 토너먼트 진행 + 결과 상태를 모두 보관한다.
 
 import { create } from "zustand";
-import type { IGame, ITournamentPair } from "@/types/game";
+import type { IApiError, IGame, ITournamentPair } from "@/types/game";
 
 // 스토어가 보관하는 순수 상태 필드 (data).
 // 액션과 분리해 정의해야 `initialState` 객체로 reset 시 액션이 섞이지 않는다.
@@ -19,6 +19,9 @@ interface IStateStoreState {
   nextRoundQueue: IGame[];
   // 최종 우승자. null이면 아직 토너먼트가 끝나지 않았다는 의미.
   winner: IGame | null;
+  // 직전 외부 API 호출 에러 (F-11 / Story #6). null이면 정상 상태.
+  // 검색 흐름이 실패를 정규화해 여기에 반영하고, ErrorMessage 컴포넌트(#15)가 구독해 인라인 안내를 띄운다.
+  apiError: IApiError | null;
 }
 
 // 스토어의 동작(actions) 시그니처.
@@ -34,6 +37,10 @@ interface IStateStoreActions {
   pushToNextRound: (game: IGame) => void;
   setWinner: (game: IGame) => void;
   getWinner: () => IGame | null;
+  // API 에러 상태 반영/해제 (Story #6). 인자에 null을 주면 해제도 가능하지만,
+  // 의도를 명확히 하기 위해 해제 전용 clearApiError를 따로 둔다.
+  setApiError: (error: IApiError | null) => void;
+  clearApiError: () => void;
   resetAll: () => void;
 }
 
@@ -46,6 +53,7 @@ const initialState: IStateStoreState = {
   currentMatches: [],
   nextRoundQueue: [],
   winner: null,
+  apiError: null,
 };
 
 // 실제 스토어 인스턴스 — 컴포넌트에서 `useStateStore()` 훅으로,
@@ -99,6 +107,14 @@ export const useStateStore = create<IStateStoreState & IStateStoreActions>((set,
   // 11) 최종 우승자 조회
   getWinner: () => get().winner,
 
-  // 12) 전체 초기화 (F-13 새 토너먼트 시작) — 캐시까지 비워야 다음 세션이 깨끗하게 시작
+  // 12) API 에러 반영 (Story #6) — searchModule이 정규화한 IApiError를 그대로 저장.
+  //     null을 넘기면 해제와 동일하게 동작한다.
+  setApiError: (error) => set({ apiError: error }),
+
+  // 13) API 에러 해제 — 검색이 다시 성공하면 호출해 배너를 사라지게 한다.
+  clearApiError: () => set({ apiError: null }),
+
+  // 14) 전체 초기화 (F-13 새 토너먼트 시작) — 캐시까지 비워야 다음 세션이 깨끗하게 시작.
+  //     apiError도 initialState에 포함돼 함께 null로 리셋된다.
   resetAll: () => set({ ...initialState, searchCache: new Map() }),
 }));
