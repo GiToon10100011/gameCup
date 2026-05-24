@@ -89,6 +89,9 @@
 - **Task #16 — 오류 상태 안정성 테스트** (Story #6 / F-11, 2026.05.25):
   - `tests/unit/error-state-stability.test.tsx` 신규 (5 tests) — searchModule(`searchWithErrorHandling`) + stateStore(`apiError`) + ErrorMessage 컴포넌트 통합 검증: ① API 실패가 예외로 전파되지 않고 `[]`로 안전 응답 ② 오류가 기존 캐시·후보 상태를 훼손하지 않음 ③ 오류→ErrorMessage 자동 표시→성공 검색 시 배너 사라짐(라이브 구독, `act`로 재렌더 flush) ④ 연속 실패에도 매번 응답하며 최신 오류 반영 ⑤ 오류 중에도 후보 등록·삭제 등 다른 store 동작 정상.
   - Story #6(API 오류 안내) 자식 Task #14·#15·#16 **전부 완료** → Epic #1 통합 준비.
+- **Story #6 통합 PR #88 리뷰 반영** (CodeRabbit Major 2건, 2026.05.25):
+  - **3계층 준수:** `src/hooks/useApiError.ts` 신규 — Presentation(ErrorMessage)이 `stateStore`(Data)를 직접 구독하던 것을 Business 브릿지 훅으로 분리(useSearchQuery와 동일 패턴). `ErrorMessage.tsx`는 `useApiError()`만 의존.
+  - **동시 요청 레이스 가드:** `searchModule.ts`에 `latestSearchRequestId` 도입 — `searchWithErrorHandling`이 자기 요청이 최신일 때만 `store`에 상태 반영. 늦게 끝난 과거 실패가 최신 성공의 `clearApiError`를 덮어쓰는 문제 차단. `searchModule.error.test.ts`에 레이스 가드 테스트 1건 추가.
 
 ### Deprecated
 - _(없음.)_

@@ -25,6 +25,13 @@ export const SEARCH_RESPONSE_TIME_BUDGET_MS = 1000;
  */
 let lastSearchDurationMs: number | null = null;
 
+/**
+ * 최신 검색 요청 식별자 (PR #88 리뷰 반영 — 동시 요청 레이스 가드).
+ * 빠른 연속 검색에서 늦게 끝난 과거 요청이 최신 요청의 상태(apiError)를 덮어쓰지 않도록,
+ * searchWithErrorHandling은 자기 요청이 여전히 "최신"일 때만 store에 결과를 반영한다.
+ */
+let latestSearchRequestId = 0;
+
 /** 검색어 유효성 — 공백/빈 값은 false. F-12에 따라 외부 API 호출을 막는 1차 게이트. */
 export function validateQuery(query: string): boolean {
   return query.trim().length > 0;
@@ -133,14 +140,21 @@ export function toApiError(error: unknown): IApiError {
  */
 export async function searchWithErrorHandling(query: string): Promise<IGame[]> {
   const store = useStateStore.getState();
+  // 이 호출의 요청 번호를 채번 — 더 나중에 시작된 검색이 있으면 본 요청은 "구식"이 된다.
+  const requestId = ++latestSearchRequestId;
   try {
-    // 1) 정상 흐름 — 성공하면 직전 에러 배너를 걷어내고 결과 반환
+    // 1) 정상 흐름 — 결과는 항상 호출자에게 반환한다.
     const results = await search(query);
-    store.clearApiError();
+    // 상태 반영은 본 요청이 여전히 최신일 때만 — 늦게 끝난 과거 요청이 최신 상태를 덮지 않도록.
+    if (requestId === latestSearchRequestId) {
+      store.clearApiError();
+    }
     return results;
   } catch (error) {
-    // 2) 실패 흐름 — 형태를 통일해 상태에 반영. ErrorMessage(#15)가 이 값을 구독한다.
-    store.setApiError(toApiError(error));
+    // 2) 실패 흐름 — 본 요청이 최신일 때만 에러를 상태에 반영(레이스 가드). ErrorMessage(#15)가 구독.
+    if (requestId === latestSearchRequestId) {
+      store.setApiError(toApiError(error));
+    }
     // 3) graceful degradation — 빈 결과로 호출자가 그대로 렌더할 수 있게 한다.
     return [];
   }

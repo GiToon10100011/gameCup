@@ -170,4 +170,38 @@ describe("searchModule 에러 처리 (Issue #14)", () => {
       expect(useStateStore.getState().apiError).toBeNull();
     });
   });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 5) 동시 요청 레이스 가드 (PR #88 리뷰 반영)
+  // ───────────────────────────────────────────────────────────────────────────
+  describe("searchWithErrorHandling — 동시 요청 레이스 가드", () => {
+    it("늦게 끝난 과거 요청의 실패가 나중 요청의 성공 상태를 덮어쓰지 않는다", async () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      vi.spyOn(console, "debug").mockImplementation(() => {});
+
+      // 요청 A: 수동으로 나중에 reject할 pending 프로미스 (느린 실패)
+      let rejectA: (e: unknown) => void = () => {};
+      mockedFetchGames.mockImplementationOnce(
+        () => new Promise<never>((_, reject) => { rejectA = reject; }),
+      );
+      // 요청 B: 즉시 성공
+      const okResult = [{ id: "1", name: "Zelda", thumbnailUrl: "" }];
+      mockedFetchGames.mockResolvedValueOnce(okResult);
+
+      // A 먼저 시작(requestId=N) — 아직 pending
+      const pA = searchWithErrorHandling("a");
+      // B 나중 시작(requestId=N+1, 최신) → 먼저 성공 완료 → clearApiError
+      const resultB = await searchWithErrorHandling("b");
+      expect(resultB).toEqual(okResult);
+      expect(useStateStore.getState().apiError).toBeNull();
+
+      // 이제 A가 뒤늦게 실패 — 하지만 A는 더 이상 최신이 아니므로 setApiError가 가드됨
+      rejectA(new ExternalApiError("늦은 실패", 500));
+      const resultA = await pA;
+      expect(resultA).toEqual([]);
+
+      // 최신 성공 상태(에러 없음)가 보존되어야 함 — 과거 실패에 덮이지 않음
+      expect(useStateStore.getState().apiError).toBeNull();
+    });
+  });
 });

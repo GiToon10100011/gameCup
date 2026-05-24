@@ -1,13 +1,14 @@
 "use client";
 
 // 인라인 API 오류 메시지 컴포넌트 (F-11, Story #6 / Task #15).
-// StateStore의 `apiError`(Task #14에서 추가)를 구독해, 오류가 있으면 인라인 alert를 표시하고
-// 없으면 아무것도 렌더하지 않는다. View는 직접 외부 API를 모르고 store 상태만 본다(3계층 준수).
+// Business 브릿지 훅 `useApiError`를 통해 오류 상태를 받아, 있으면 인라인 alert를 표시하고
+// 없으면 아무것도 렌더하지 않는다. View는 store(Data)를 직접 구독하지 않는다 — 3계층 준수
+// (PR #88 리뷰 반영: stateStore 직접 구독 제거).
 //
 // 디자인 기준: docs/03-design/DESIGN.md(getdesign `clickhouse`)의 error 토큰(#ef4444).
 // 접근성: role="alert" + aria-live로 스크린리더 즉시 통지, 닫기 버튼은 터치 타겟 ≥44px.
 
-import { useStateStore } from "@/store/stateStore";
+import { useApiError } from "@/hooks/useApiError";
 import { errorMessageVariants } from "@/components/ui/ErrorMessage.variants";
 
 // ErrorMessage의 외부 인터페이스 (props 타입). 컨벤션: 모든 `interface`는 `I` 접두사.
@@ -23,9 +24,8 @@ interface IErrorMessageProps {
  * - 오류가 있으면 메시지 + (있으면)상태코드 + (옵션)닫기 버튼 표시
  */
 export function ErrorMessage({ dismissible = true }: IErrorMessageProps) {
-  // 1) store 구독 — apiError가 바뀌면 자동 리렌더. 필드별 selector로 불필요한 리렌더 최소화.
-  const apiError = useStateStore((state) => state.apiError);
-  const clearApiError = useStateStore((state) => state.clearApiError);
+  // 1) Business 브릿지 훅으로 오류 상태 구독 — 컴포넌트는 store를 직접 모름(3계층 준수).
+  const { error: apiError, clearError } = useApiError();
 
   // 2) 오류가 없으면 아무것도 렌더하지 않는다 — 정상 흐름에서는 빈 출력
   if (!apiError) return null;
@@ -57,7 +57,7 @@ export function ErrorMessage({ dismissible = true }: IErrorMessageProps) {
           type="button"
           aria-label="오류 메시지 닫기"
           className={dismiss()}
-          onClick={() => clearApiError()}
+          onClick={() => clearError()}
         >
           ✕
         </button>
