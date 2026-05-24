@@ -1,0 +1,70 @@
+#!/usr/bin/env sh
+# prepare-commit-msg: 브랜치명에서 이슈 번호를 추출해 커밋 제목 끝에 (#N) 자동 부착
+#
+# 적용 대상 브랜치 패턴: <type>/<number>-<slug>
+#   예) feat/5-game-search-dropdown  → 메시지 제목에 (#5) 추가
+#       chore/60-vercel-setup        → (#60)
+#       test/16-error-state          → (#16)
+#
+# 스킵 조건:
+#   - merge, squash, fixup, revert 등 자동 생성 커밋
+#   - 이미 메시지에 #N 토큰이 존재하는 경우
+#   - 브랜치명에서 번호를 추출할 수 없는 경우(main, dev 등)
+
+COMMIT_MSG_FILE="$1"
+COMMIT_SOURCE="$2"
+
+# 자동 생성 커밋은 건드리지 않는다
+case "$COMMIT_SOURCE" in
+  merge|squash|commit)
+    exit 0
+    ;;
+esac
+
+# 현재 브랜치 가져오기 (detached HEAD 등은 빈 문자열)
+BRANCH_NAME="$(git symbolic-ref --short HEAD 2>/dev/null || echo '')"
+[ -z "$BRANCH_NAME" ] && exit 0
+
+# main/dev 등 통합 브랜치는 스킵
+case "$BRANCH_NAME" in
+  main|master|dev|develop|release|release/*)
+    exit 0
+    ;;
+esac
+
+# <type>/<number>-... 패턴에서 number 추출
+ISSUE_NUM="$(printf '%s' "$BRANCH_NAME" | sed -nE 's@^[a-z]+/([0-9]+)([-_/.].*)?$@\1@p')"
+[ -z "$ISSUE_NUM" ] && exit 0
+
+# 첫 줄(제목) 추출 — 주석/공백 라인 무시
+FIRST_LINE="$(grep -vE '^[[:space:]]*#' "$COMMIT_MSG_FILE" | sed -n '1p')"
+[ -z "$FIRST_LINE" ] && exit 0
+
+# fixup!/squash! 커밋은 그대로 둔다
+case "$FIRST_LINE" in
+  "fixup!"*|"squash!"*|"amend!"*|"Revert"*)
+    exit 0
+    ;;
+esac
+
+# 이미 #N이 포함되어 있으면 스킵 (공백/쉼표/괄호/EOL 경계)
+if printf '%s' "$FIRST_LINE" | grep -qE "#${ISSUE_NUM}([^0-9]|$)"; then
+  exit 0
+fi
+
+# 제목 끝에 " (#N)" 부착
+NEW_FIRST_LINE="${FIRST_LINE} (#${ISSUE_NUM})"
+
+# 원본 파일을 치환 (첫 비-주석 라인을 새 제목으로 교체)
+TMP_FILE="$(mktemp)" || exit 0
+awk -v new="$NEW_FIRST_LINE" '
+  BEGIN { replaced = 0 }
+  {
+    if (!replaced && $0 !~ /^[[:space:]]*#/ && $0 !~ /^[[:space:]]*$/) {
+      print new
+      replaced = 1
+    } else {
+      print $0
+    }
+  }
+' "$COMMIT_MSG_FILE" > "$TMP_FILE" && mv "$TMP_FILE" "$COMMIT_MSG_FILE"

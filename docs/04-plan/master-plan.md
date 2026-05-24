@@ -5,6 +5,8 @@
 본 문서는 GameCup 프로젝트의 단일 진실 공급원(Single Source of Truth)이다.
 변경 이력은 [`changelog.md`](./changelog.md)에 누적되며, 다음 이터레이션 분기 시점·규칙은 [`../05-process/iteration-update-guide.md`](../05-process/iteration-update-guide.md)를 따른다.
 
+> **🟢 운영 체크리스트:** 현시점에서 사용자가 직접 처리해야 할 작업은 [`./next-actions.md`](./next-actions.md)에 정리되어 있다 (Phase 0 직후 기준).
+
 ---
 
 ## 목차
