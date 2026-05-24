@@ -98,6 +98,10 @@
 - **Task #18 — 후보 등록 액션(candidateModule.addToPool) 테스트** (Story #7 / F-03·F-04, 2026.05.25):
   - `tests/unit/candidateModule.test.ts` — `it.todo` 스텁을 실테스트로 구현(addToPool 부분): 신규 등록 시 `{ ok: true }`+추가(F-03) / 중복 id 시 `{ ok: false, reason: "duplicate" }`+무시(F-04) / 서로 다른 게임 연속 등록 성공. `removeFromPool`(#21)·`canStartTournament`(토너먼트)는 todo 유지.
   - 등록 액션 `addToPool`(store `addCandidate`를 discriminated union 결과로 래핑)은 Business 레이어에 이미 존재했고, 본 Task에서 동작(특히 F-04 중복 사유 반환) 검증을 추가.
+- **Task #19 — 중복 알림 토스트 컴포넌트** (Story #7 / F-04, 2026.05.25):
+  - `src/components/candidate/DuplicateToast.tsx` 신규 — `addToPool`이 `{ ok:false, reason:"duplicate" }`일 때 부모가 띄우는 일시 토스트. props 제어(`open`/`message`/`onClose`/`durationMs`), `durationMs`(기본 3s) 후 자동 닫힘. 비-긴급이라 `role="status"`+`aria-live="polite"`.
+  - `src/components/candidate/DuplicateToast.variants.ts`: tailwind-variants 분리. **DESIGN.md(clickhouse) warning 토큰 `#f59e0b`(amber 계열)** — 중복은 에러(빨강)가 아닌 "주의"라 amber로 구분.
+  - `tests/unit/components/candidate/DuplicateToast.test.tsx` 신규 (5 tests) — open false/true 표시·비표시 / 기본·커스텀 메시지 / durationMs 후 자동 onClose(fake timers) / open=false 시 타이머 미발동.
 
 ### Deprecated
 - _(없음.)_
