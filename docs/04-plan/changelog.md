@@ -86,6 +86,9 @@
   - `src/components/ui/ErrorMessage.tsx`: `store.apiError`(Task #14)를 구독해 오류가 있으면 인라인 alert 표시, 없으면 렌더 안 함. `role="alert"`+`aria-live="assertive"`로 즉시 통지, statusCode>0일 때만 보조 코드 표기, 닫기(✕) 버튼은 `clearApiError` 호출. 3계층 준수(View는 store 상태만 구독).
   - `src/components/ui/ErrorMessage.variants.ts`: tailwind-variants 분리(컨벤션). **디자인 기준 `docs/03-design/DESIGN.md`(getdesign `clickhouse`)의 error 토큰 `#ef4444`(red-500 계열)** 적용. 닫기 버튼은 **a11y 오버라이드로 터치 타겟 ≥44×44px(`h-11 w-11`)** — ClickHouse 템플릿 36px가 WCAG 2.5.5 미만이라 인터랙티브 요소는 상향.
   - `tests/unit/components/ui/ErrorMessage.test.tsx` 신규 (6 tests) — null 미렌더 / role=alert 메시지 / statusCode 표기 분기 / 닫기→해제 / dismissible=false.
+- **Task #16 — 오류 상태 안정성 테스트** (Story #6 / F-11, 2026.05.25):
+  - `tests/unit/error-state-stability.test.tsx` 신규 (5 tests) — searchModule(`searchWithErrorHandling`) + stateStore(`apiError`) + ErrorMessage 컴포넌트 통합 검증: ① API 실패가 예외로 전파되지 않고 `[]`로 안전 응답 ② 오류가 기존 캐시·후보 상태를 훼손하지 않음 ③ 오류→ErrorMessage 자동 표시→성공 검색 시 배너 사라짐(라이브 구독, `act`로 재렌더 flush) ④ 연속 실패에도 매번 응답하며 최신 오류 반영 ⑤ 오류 중에도 후보 등록·삭제 등 다른 store 동작 정상.
+  - Story #6(API 오류 안내) 자식 Task #14·#15·#16 **전부 완료** → Epic #1 통합 준비.
 
 ### Deprecated
 - _(없음.)_
