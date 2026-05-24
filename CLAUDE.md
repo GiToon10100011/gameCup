@@ -108,6 +108,7 @@
 | Path alias | `@/*` → `src/*` |
 | 3계층 호출 방향 | Presentation → Business → Data (역방향·건너뛰기 금지) |
 | **블록 주석** | **새로 작성하는 모든 코드는 함수·effect·분기·jsx 섹션·테스트 그룹마다 한국어 주석 필수** (교육·포트폴리오 목적). WHY 우선, WHAT은 자명하지 않을 때만 |
+| **UI 디자인 기준** | **UI(컴포넌트·화면)를 신규 제작·수정하기 전 반드시 [`docs/03-design/DESIGN.md`](docs/03-design/DESIGN.md)를 참조**한다. 색·타이포·간격·컴포넌트 토큰의 단일 기준(`getdesign`의 `clickhouse` 템플릿). 디자인 토큰 갱신이 필요하면 `npx getdesign@latest add <template>`로 루트에 `DESIGN.md`를 재생성한 뒤 `docs/03-design/`로 이동해 교체한다. 비-UI 로직(모듈·스토어·유틸)에는 해당 없음 (사용자 영구 지시 2026.05.24) |
 
 ---
 

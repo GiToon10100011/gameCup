@@ -28,8 +28,10 @@
   - `hook-verify` 잡: `.husky/pre-commit` 실행 권한 + `lint-staged` 호출 가능성 + PR diff 대상 dry run
 - 설정 가이드 [`../06-setup/git-hooks.md`](../06-setup/git-hooks.md), [`../06-setup/github-actions.md`](../06-setup/github-actions.md)
 - 기술 근거 [`../07-tech-rationale/README.md`](../07-tech-rationale/README.md) §12 (Husky · lint-staged · GitHub Actions)
-
-### Changed
+- **UI 디자인 기준 문서 `DESIGN.md` 사전 보관** (사용자 지시 2026.05.24, 이슈 #79): `getdesign` CLI(`npx getdesign@latest add clickhouse`)가 생성하는 ClickHouse 영감 디자인 토큰(블랙 캔버스 + 일렉트릭 옐로우, Inter 타이포, 색/타이포/간격/컴포넌트 스펙)을 [`../03-design/DESIGN.md`](../03-design/DESIGN.md)로 보관. UI(컴포넌트·화면) 제작 전 단일 디자인 기준으로 참조한다.
+  - `CLAUDE.md` §5 코딩 컨벤션에 "UI 디자인 기준" 행 추가 — UI 신규 제작·수정 전 `DESIGN.md` 참조 의무화, 토큰 갱신은 `getdesign` 재생성 후 `docs/03-design/`로 이동
+  - `docs/README.md` — 03-design 행에 `DESIGN.md` 추가 + 빠른 진입점에 "🎨 UI 디자인 기준" 링크
+  - 사용자 메모리 `feedback_ui_getdesign_clickhouse.md` 신설 ([[feedback-variants-separate-file]]와 함께 UI 작업 시 적용)
 - **인터페이스 `I` 접두사 + 블록 주석 컨벤션 영구 적용** (사용자 영구 원칙, PR #63 리뷰 + 2026.05.20): TypeScript `interface`는 항상 `I` 접두사(예: `ISearchInputProps`), `type`/컴포넌트는 영향 없음. 새 코드 블록(함수·effect·분기·jsx·테스트)마다 한국어 주석 필수(교육·포트폴리오 목적, 보안 우려 없음). `CLAUDE.md` §5·`.claude/agents/code.md`·글로벌 `project-bootstrap`·사용자 메모리(`feedback_interface_i_prefix.md`, `feedback_block_comments_required.md`)에 명문화.
 - **`gh` CLI 우선 + PR/이슈 템플릿 우선 영구 적용** (사용자 영구 지시, 2026.05.20): 이슈·PR 생성·머지·코멘트는 `gh` CLI 1순위(MCP는 fallback). 본문은 `.github/pull_request_template.md`와 `.github/ISSUE_TEMPLATE/*.md` 골격을 우선 따르고 추가 정보 덧붙임. `CLAUDE.md` §9·`.claude/agents/github.md`·글로벌 `project-bootstrap` §9.5와 사용자 메모리(`feedback_gh_cli_preferred.md`, `feedback_use_github_templates.md`)에 명문화.
 - **PR 위계 흐름 영구 적용** (사용자 영구 지시, 2026.05.20): Task PR → Story 브랜치, Story PR → Epic 브랜치, Epic PR → dev. Epic/Story 브랜치는 자식 PR이 모이는 통합 베이스로 코드 작성보다는 머지 후 보완 작업만. `CLAUDE.md` §9·`.claude/agents/{issue-branch,github}.md`·`docs/04-plan/sprint-1-mapping.md`에 명문화, 글로벌 `project-bootstrap` §9.5와 사용자 메모리 `feedback_pr_hierarchy_flow.md`에도 저장.
