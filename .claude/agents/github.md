@@ -166,19 +166,95 @@ model: sonnet
 
 > **gh CLI 우선 원칙:** `gh pr create`가 작동하지 않을 때만(미설치/권한 등) GitHub MCP `mcp__github__create_pull_request`로 fallback.
 
+### 3.0. "다음 작업 진행" 신호 시 OPEN PR 우선 처리 (필수)
+
+사용자가 "다음 작업 진행해줘", "이어서 진행", "다음 Task로" 같은 다음 단계 진행 신호를 보내면 **즉시 새 Task에 착수하지 않는다.** 다음 절차를 먼저 수행한다.
+
+1. `gh pr list --state open --json number,title,headRefName,baseRefName,mergeable,mergeStateStatus,author --jq '.[]'`로 OPEN PR 전체 조회
+2. 각 PR에 대해 다음을 정리:
+   - 번호·제목·head·base
+   - `mergeable` / `mergeStateStatus` (CLEAN·DIRTY·CONFLICTING)
+   - 미반영 리뷰 코멘트(CodeRabbit·사용자) 존재 여부 — `gh api repos/<owner>/<repo>/pulls/<N>/comments`로 확인
+3. 사용자에게 한 화면 요약 보고:
+   - 미반영 리뷰가 있는 PR → "리뷰 반영 후 머지 가능"
+   - CLEAN/MERGEABLE PR → "즉시 머지 가능"
+   - 충돌 PR → "rebase/merge 또는 close 결정 필요"
+4. 사용자 결정에 따라 처리:
+   - 리뷰 반영 → 해당 브랜치 전환 → 수정 → 푸시 → 리뷰 답변
+   - 머지 → §4 (이슈 close) + §5 (브랜치 정리) 즉시 실행
+   - close → 사유 코멘트 + `gh pr close`
+5. **모든 OPEN PR이 처리된 뒤에만** 다음 Task에 착수
+
+미반영 리뷰가 있는데 머지하면 추후 회귀가 발생하므로, 머지 전 반드시 리뷰 반영 확인.
+
+---
+
+### 3.5. Protected ruleset 브랜치 직접 커밋 금지 (필수)
+
+`main`, `dev` 등 GitHub Branch protection / Ruleset이 적용된 브랜치에는 **로컬 커밋·푸시를 절대 시도하지 않는다.** 운영/문서 변경(컨벤션 갱신·CLAUDE.md 수정 등)이 필요해도 같은 절차를 따른다:
+
+1. `gh issue create --title "[ops] ..." --label "🔧 Chore" --body-file <template-filled>.md`로 **이슈 먼저 생성**
+2. `git checkout dev && git pull origin dev --ff-only`로 최신화
+3. `git checkout -b <type>/<N>-<slug>`로 새 브랜치 분기 (`<type>`은 `chore`/`docs`/`fix`/`refactor` 등 라벨 매핑)
+4. 변경 작업 → 커밋(prepare-commit-msg 훅이 `(#N)` 자동 부착) → `git push -u origin <branch>`
+5. `gh pr create --base dev --head <branch>` (위계 무시 — 운영 변경은 dev 직접 PR)
+6. 사용자 검사 후 머지 + 이슈 자동 close + 브랜치 자동 정리
+
+**위반 사례 회수 (구체 절차):** 실수로 dev/main에 직접 커밋이 들어갔다면 즉시 사용자에게 보고하고 다음 5단계로 복구한다.
+
+1. `git log dev -n 5 --oneline`로 잘못 들어간 **커밋 해시 식별** (출력 확보)
+2. `git checkout -b <type>/<이슈번호>-recover-<slug>`로 회수 브랜치 생성 (이슈를 먼저 만들고 그 번호 사용)
+3. `git cherry-pick <commit-hash>`로 변경 내용을 회수 브랜치에 복사 — 분쟁 시 수동 해결
+4. dev로 돌아가 `git revert <commit-hash> --no-edit && git push origin dev` 로 dev의 잘못된 커밋 되돌림 (push가 ruleset에 걸리면 추가 회수 PR 필요 → §3.5 절차 반복)
+5. 회수 브랜치에서 정상 PR 절차(§2)로 변경 사항을 다시 제출
+
+각 단계에서 확보할 출력: ① 커밋 해시, ② 브랜치 이름, ③ revert 커밋 해시, ④ 회수 PR 번호. 모두 사용자에게 보고한다.
+
+---
+
 ### 4. PR 머지 직후 이슈 자동 close (필수)
 
-**중요:** GitHub의 `Closes #N` 키워드는 **PR base가 default branch(main/dev)일 때만** 자동으로 이슈를 닫는다. 본 프로젝트는 PR 위계 흐름(Task PR → Story 브랜치, Story PR → Epic 브랜치)을 사용하므로 Task/Story PR 머지 시 **자동 close가 동작하지 않는다.** 따라서 머지 직후 본 에이전트가 직접 닫는다.
+**중요:** GitHub의 `Closes #N` / `Fixes #N` / `Resolves #N` 키워드는 **PR base가 저장소의 실제 default branch일 때만** 자동으로 이슈를 닫는다 (공식 docs: <https://docs.github.com/articles/closing-issues-using-keywords>). 본 프로젝트의 default branch는 **`main`**이며 통합 작업은 `dev`에서 일어나므로, `dev`로 머지되는 Task/Story/Epic/chore PR은 모두 자동 close가 동작하지 않는다. 따라서 머지 직후 본 에이전트가 직접 닫는다.
 
 머지 직후 절차:
 
-1. PR 본문에서 `Closes #N` / `Fixes #N` / `Refs: #N` 토큰을 파싱해 관련 이슈 번호 추출
+1. **저장소의 실제 default branch 확인** — `DEFAULT_BRANCH=$(gh repo view --json defaultBranchRef --jq .defaultBranchRef.name)`
+2. **PR base 비교** — `gh pr view <PR#> --json baseRefName --jq .baseRefName`이 `$DEFAULT_BRANCH`와 같지 않으면 자동 close 미동작이 확정 → 무조건 수동 close 진행. 같으면 스킵 가능하나 §3에서 한번 더 검증.
+3. **PR 본문에서 close 키워드 파싱** — `Closes #N` / `Fixes #N` / `Resolves #N`만 매칭 (대소문자 무관). `Refs: #N`은 백링크용이므로 close 대상이 아님.
    - `gh pr view <PR#> --json body --jq .body | grep -ioE '(closes|fixes|resolves) #[0-9]+'`
-2. 각 이슈에 대해 `gh issue close <N> --reason completed --comment "PR #<PR#> 머지로 완료. base가 통합 베이스이므로 자동 close 미동작 → 수동 close."` 실행
-3. PR base가 `dev`(default branch)인 경우 자동 close 동작하므로 스킵 가능. 단, 검증을 위해 `gh issue view <N> --json state`로 closed 여부 확인하고, 여전히 open이면 수동 close.
-4. 닫은 이슈 번호를 사용자에게 보고
+4. 추출한 각 이슈에 대해 `gh issue close <N> --reason completed --comment "PR #<PR#> 머지로 완료. base=<base>, default=<default> 불일치로 자동 close 미동작 → 수동 close."` 실행
+5. **검증:** `gh issue view <N> --json state --jq .state`로 `CLOSED` 확인. 여전히 OPEN이면 재시도하고 사용자에게 보고
+6. 닫은 이슈 번호와 base/default 정보를 사용자에게 보고
 
-**예외:** `Refs: #N`만 있고 `Closes`가 없는 통합 커밋의 경우 닫지 않는다. `Closes`가 명시된 이슈만 닫는다.
+**예외:** `Refs: #N`만 있고 `Closes/Fixes/Resolves`가 없는 통합 커밋의 경우 닫지 않는다. 명시된 close 키워드가 있는 이슈만 닫는다.
+
+---
+
+### 5. PR 머지 직후 하위 브랜치 자동 정리 (필수)
+
+머지 직후 head 브랜치를 **원격·로컬 모두 삭제**하고 사용자에게 보고한다.
+
+```bash
+HEAD_BRANCH=$(gh pr view <PR#> --json headRefName --jq .headRefName)
+git push origin --delete "$HEAD_BRANCH"
+# 로컬에 해당 브랜치가 체크아웃되어 있다면 먼저 다른 브랜치로 이동
+git branch -d "$HEAD_BRANCH" 2>/dev/null || true
+git fetch --prune
+```
+
+**브랜치 종류별 삭제 트리거 (정정 — 사용자 명시 2026.05.20):**
+
+| 브랜치 종류 | 삭제 트리거 |
+| --- | --- |
+| **Task 브랜치** (`feat/<N>-...`, Task 이슈) | 본 Task PR이 부모 **Story 브랜치로 머지될 때** 삭제 |
+| **Story 브랜치** (`feat/<M>-...`, Story 이슈) | 본 Story PR이 부모 **Epic 브랜치로 머지될 때** 삭제 |
+| **Epic 브랜치** (`feat/<K>-...`, Epic 이슈) | 본 Epic PR이 **`dev`로 머지될 때** 삭제 |
+| **chore/docs/fix 운영 브랜치** | 본 PR이 **`dev`로 머지될 때** 삭제 |
+
+**예외:**
+- 사용자가 명시적으로 "보존해줘"라고 한 브랜치는 모든 트리거 무시.
+
+**보고 형식:** "PR #<N> 머지 완료 → 이슈 #<M> close, 브랜치 `<head>` 원격·로컬 삭제."
 
 ### 3. Epic/Story 브랜치 자체에서의 작업
 

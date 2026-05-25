@@ -12,7 +12,7 @@
 | [`00-overview/`](./00-overview/) | 프로젝트 비전·타겟·핵심 가치 | `project-idea.md` |
 | [`01-prd/`](./01-prd/) | 이터레이션별 PRD (요구사항 정의서) | `iteration-3.md` (v3.0) |
 | [`02-usecase/`](./02-usecase/) | 유즈케이스 정의서 (Fully Dressed + Stepwise) | `fully-dressed.md` (v1.0) · `stepwise.md` (v1.1) |
-| [`03-design/`](./03-design/) | UML 3대 다이어그램 (Class · Sequence · Activity) | `uml-v1.1.md` (코드 기준) · `uml-v1.2.md` (Draft, 2026.05.17) |
+| [`03-design/`](./03-design/) | UML 3대 다이어그램 + UI 디자인 기준 | `uml-v1.1.md` (코드 기준) · `uml-v1.2.md` (Draft, 2026.05.17) · `DESIGN.md` (UI 디자인 토큰, getdesign `clickhouse`) |
 | [`04-plan/`](./04-plan/) | 마스터 플랜 + 변경 이력 | `master-plan.md` (v1.0), `changelog.md` |
 | [`05-process/`](./05-process/) | 이터레이션 갱신 템플릿·가이드 | `iteration-template.md`, `iteration-update-guide.md` |
 | [`06-setup/`](./06-setup/) | 환경 설정·초기화 가이드 (개발/배포/외부 서비스) | `README.md` 인덱스 |
@@ -29,6 +29,7 @@
 - **프로젝트 이해 → 구현 시작:** [`04-plan/master-plan.md`](./04-plan/master-plan.md)
 - **현재 베이스라인 PRD:** [`01-prd/iteration-3.md`](./01-prd/iteration-3.md)
 - **모듈/클래스 구조:** [`03-design/uml-v1.1.md`](./03-design/uml-v1.1.md)
+- **🎨 UI 디자인 기준 (제작 전 필독):** [`03-design/DESIGN.md`](./03-design/DESIGN.md)
 - **변경 이력 (누적):** [`04-plan/changelog.md`](./04-plan/changelog.md)
 - **새 이터레이션 작성 절차:** [`05-process/iteration-update-guide.md`](./05-process/iteration-update-guide.md)
 - **개발 환경 셋업:** [`06-setup/README.md`](./06-setup/README.md)

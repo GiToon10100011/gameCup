@@ -11,6 +11,10 @@
 
 ### Added
 - **`tailwind-variants` + `tailwind-merge` 도입** (PR #64 리뷰 피드백): SearchDropdown의 4가지 상태 공통 스타일을 slots/variants로 모듈화. 기술 근거 [`../07-tech-rationale/README.md`](../07-tech-rationale/README.md) §3에 누적, `.env.local.example`에 RAWG BASE_URL override 변수(`NEXT_PUBLIC_RAWG_BASE_URL`) 추가.
+- **운영 도구: Linear 워크스페이스 보조 도입** (2026.05.23, 이슈 #76) — GameCup 팀(team id `eee1389e-3647-44fa-b1b1-64d123c102dc`) 신규 세팅. 주 트래커는 여전히 **GitHub Issues**이며, Linear는 이터레이션 단위 운영 시각화를 보조하기 위한 **별도 워크스페이스**로 운용한다.
+- **설정 가이드 신규:** [`../06-setup/linear-cycles.md`](../06-setup/linear-cycles.md) 추가. Linear Cycle(Sprint) cadence 초기화(4주·일요일 시작·첫 사이클 2026-05-24·미리 생성 1·cooldown 0) 절차와 검증 체크리스트. 8개 표준 섹션 포함.
+- **인덱스 갱신:** [`../06-setup/README.md`](../06-setup/README.md) 가이드 목록 표에 `linear-cycles.md` 행 추가 (도입 시점: Phase 0 후속 / 2026.05.21, 상태: 활성).
+- **Linear Cycle cadence 적용 완료** (2026-05-24 발효, `list_cycles` 검증): GameCup 팀(`eee1389e-…`) 사이클을 **4주·일요일 시작**으로 전환. Cycle 1 `startsAt=2026-05-23T15:00:00Z`(KST 2026-05-24 00:00)·`isCurrent: true` 실측 확인. 첫 사이클은 Linear의 주 경계 정렬로 **29일**(2026-05-24~06-22), Cycle 2부터 정확히 28일. 미래 사이클은 Linear가 Cycle 2·3을 자동 선생성(요청 1개와 무관한 기본 동작).
 - **글로벌 에이전트 `project-bootstrap`** 신규 — 모든 신규 프로젝트의 PRD→이슈 분해·GitHub MCP 등록·docs 구조 자동 부트스트랩 담당. 위치: `~/.claude/agents/project-bootstrap.md` (사용자 레벨, 모든 프로젝트 공용). **프로필 시스템(mini/lite/standard/full)** 도입 — default `lite`, 매번 확인.
 - **글로벌 에이전트 `docs-builder`** 신규 — PRD/아이디어 기반 후속 문서(API 명세·용어집·ADR·테스트 계획·페르소나·DB 스키마·모듈 설계·아키텍처 문서 등) 단계적 확장. 전담 영역(PRD/UML/UC)은 기존 에이전트에 위임 안내. 위치: `~/.claude/agents/docs-builder.md`
 - **`docs/04-plan/issues.md`** — 루트의 `issues.md`를 docs 트리 안으로 이동·정리 (청사진 위치 표준화)
@@ -25,6 +29,16 @@
   - `hook-verify` 잡: `.husky/pre-commit` 실행 권한 + `lint-staged` 호출 가능성 + PR diff 대상 dry run
 - 설정 가이드 [`../06-setup/git-hooks.md`](../06-setup/git-hooks.md), [`../06-setup/github-actions.md`](../06-setup/github-actions.md)
 - 기술 근거 [`../07-tech-rationale/README.md`](../07-tech-rationale/README.md) §12 (Husky · lint-staged · GitHub Actions)
+- **UI 디자인 기준 문서 `DESIGN.md` 사전 보관** (사용자 지시 2026.05.24, 이슈 #79): `getdesign` CLI(`npx getdesign@latest add clickhouse`)가 생성하는 ClickHouse 영감 디자인 토큰(블랙 캔버스 + 일렉트릭 옐로우, Inter 타이포, 색/타이포/간격/컴포넌트 스펙)을 [`../03-design/DESIGN.md`](../03-design/DESIGN.md)로 보관. UI(컴포넌트·화면) 제작 전 단일 디자인 기준으로 참조한다.
+  - `CLAUDE.md` §5 코딩 컨벤션에 "UI 디자인 기준" 행 추가 — UI 신규 제작·수정 전 `DESIGN.md` 참조 의무화, 토큰 갱신은 `getdesign` 재생성 후 `docs/03-design/`로 이동
+  - `docs/README.md` — 03-design 행에 `DESIGN.md` 추가 + 빠른 진입점에 "🎨 UI 디자인 기준" 링크
+  - 사용자 메모리 `feedback_ui_getdesign_clickhouse.md` 신설 ([[feedback-variants-separate-file]]와 함께 UI 작업 시 적용)
+- **CodeRabbit 리뷰 완료 자동 감지 워크플로** (이슈 #81, 2026.05.24): `.github/workflows/coderabbit-notify.yml` 신규. CodeRabbit 리뷰가 **완전히** 끝났는지 매번 수동 확인하던 비용 제거.
+  - **트리거:** `pull_request_review`(submitted) + `issue_comment`(created) + `check_suite`(completed)
+  - **완료 감지(사용자 지시):** head SHA의 모든 체크가 **pending이 아니라 success일 때만** 진행 — Checks API + Statuses API 종합 판정. 리뷰가 체크보다 먼저 와도 `check_suite completed`가 재평가, 커밋 SHA 마커로 라운드당 1회만 알림(dedup), 무한 루프 없음(GITHUB_TOKEN 코멘트는 재트리거 안 됨)
+  - **동작(사용자 선택, 라벨 + 알림만):** `coderabbit-reviewed` 라벨 부착 + 소유자 멘션 알림 코멘트. 코드 수정은 수동. auto-fix(`anthropics/claude-code-action` + `CLAUDE_CODE_OAUTH_TOKEN`)는 가이드에 업그레이드 절차로 문서화(현재 비활성)
+  - 설정 가이드 [`../06-setup/github-actions-coderabbit-notify.md`](../06-setup/github-actions-coderabbit-notify.md) (8개 표준 섹션) + `docs/06-setup/README.md` 인덱스 갱신
+  - ⚠️ **활성화 조건:** 이 이벤트 워크플로들은 default 브랜치(`main`)의 정의로만 실행 → main 도달 후 발동 (가이드 §7)
 
 ### Changed
 - **인터페이스 `I` 접두사 + 블록 주석 컨벤션 영구 적용** (사용자 영구 원칙, PR #63 리뷰 + 2026.05.20): TypeScript `interface`는 항상 `I` 접두사(예: `ISearchInputProps`), `type`/컴포넌트는 영향 없음. 새 코드 블록(함수·effect·분기·jsx·테스트)마다 한국어 주석 필수(교육·포트폴리오 목적, 보안 우려 없음). `CLAUDE.md` §5·`.claude/agents/code.md`·글로벌 `project-bootstrap`·사용자 메모리(`feedback_interface_i_prefix.md`, `feedback_block_comments_required.md`)에 명문화.
@@ -122,6 +136,18 @@
   - **"추가 후 드롭다운 닫힘" 배선 완료** — Story #7 수용기준 중 페이지 동작이라 #17~#20에서 보류됐던 항목(위 PR #93 범위 메모). 부모가 `isDropdownOpen` state로 `SearchDropdown.isOpen`을 제어, 후보 선택 성공/중복 시 모두 닫음. 드롭다운은 `relative` 섹션 + `absolute top-full` 오버레이로 띄워 후보 목록을 밀어내지 않음.
   - `tests/unit/app/home-flow.test.tsx` 신규(4): 검색→드롭다운 결과 표시(#5) / 선택→후보 추가 + 드롭다운 닫힘(#7 AC) / 중복 재선택→토스트(F-04) / API 실패→오류 배너(F-11). `fetchGames`만 mock, 실제 타이머+`findBy`/`waitFor`로 디바운스·비동기 쿼리 대기(fake timer×TanStack Query 취약성 회피). 전체 **103 passed / 7 todo**, build `/` 라우트 정상 프리렌더(24.5 kB).
   - **알려진 갭(후속):** 머지·리뷰된 자식 컴포넌트들은 neutral 라이트/다크 팔레트를 쓰는데, `docs/03-design/DESIGN.md`(getdesign `clickhouse`)는 dark + electric-yellow 토큰이다. 페이지 셸은 DESIGN.md의 **구조 토큰**(4px 간격·타이포 위계·radius)만 따르고 팔레트는 컴포넌트와 일관되게 neutral로 통일 — 전면 디자인 토큰 정렬은 본 통합 범위 밖, 후속 디자인 정렬 Task로 분리한다.
+- **머지 후 자동 브랜치 정리 + protected ruleset 작업 흐름 영구화** (사용자 영구 지시 2026.05.20, 이슈 #69):
+  - **머지 후 자동 정리:** PR 머지 직후 `github` 에이전트가 head 브랜치를 원격·로컬 모두 삭제(`git push origin --delete` + `git branch -d`). Epic/Story 통합 베이스는 본 통합 PR 머지 시점에만.
+  - **protected ruleset 흐름:** main/dev 등 protected 브랜치에 직접 커밋·푸시 금지. 모든 변경(운영/문서 포함)은 ① 이슈 생성 → ② dev에서 브랜치 분기 → ③ 작업·커밋 → ④ PR(base=dev) → ⑤ 머지 절차.
+  - `CLAUDE.md` §9 안전 가드레일에 두 정책 행 추가
+  - `.claude/agents/github.md` §3.5 (protected 브랜치 흐름) + §5 (브랜치 자동 정리) 신설
+  - 사용자 메모리 `feedback_merge_then_delete_branch.md` · `feedback_protected_branch_flow.md` 신설 (모든 프로젝트 공통)
+  - Sprint 1 누적 머지 브랜치 5건 정리: `feat/9`, `feat/10`, `feat/11`, `feat/12`, `chore/ops-auto-close-convention` (원격·로컬 모두 삭제)
+- **"다음 작업 진행" 신호 시 OPEN PR 머지 선행 정책 영구화** (사용자 영구 지시 2026.05.21, 이슈 #72):
+  - 사용자가 "다음 작업 진행", "이어서 진행" 같은 다음 Task 착수 신호를 보내면 즉시 새 Task에 들어가지 않고, **OPEN PR 전체를 먼저 보고 → 리뷰 반영/머지/close 처리 → 모두 정리된 뒤** 다음 Task 시작
+  - `CLAUDE.md` §9 안전 가드레일에 본 정책 추가
+  - `.claude/agents/github.md` §3.0 신설 — OPEN PR 우선 처리 5단계 절차 (gh pr list 조회 → 리뷰/머지 상태 정리 → 사용자 결정 → 처리 → 정리 후 Task 착수)
+  - 사용자 메모리 `feedback_merge_open_pr_before_next.md` 신설 (모든 프로젝트 공통)
 
 ### Deprecated
 - _(없음.)_
