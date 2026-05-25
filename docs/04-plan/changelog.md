@@ -101,7 +101,13 @@
 - **Task #19 — 중복 알림 토스트 컴포넌트** (Story #7 / F-04, 2026.05.25):
   - `src/components/candidate/DuplicateToast.tsx` 신규 — `addToPool`이 `{ ok:false, reason:"duplicate" }`일 때 부모가 띄우는 일시 토스트. props 제어(`open`/`message`/`onClose`/`durationMs`), `durationMs`(기본 3s) 후 자동 닫힘. 비-긴급이라 `role="status"`+`aria-live="polite"`.
   - `src/components/candidate/DuplicateToast.variants.ts`: tailwind-variants 분리. **DESIGN.md(clickhouse) warning 토큰 `#f59e0b`(amber 계열)** — 중복은 에러(빨강)가 아닌 "주의"라 amber로 구분.
-  - `tests/unit/components/candidate/DuplicateToast.test.tsx` 신규 (5 tests) — open false/true 표시·비표시 / 기본·커스텀 메시지 / durationMs 후 자동 onClose(fake timers) / open=false 시 타이머 미발동.
+  - `tests/unit/components/candidate/DuplicateToast.test.tsx` 신규 (5 tests) — open false/true 표시·비표시 / 기본·커스텀 메시지 / durationMs 후 자동 onClose(fake timers) / open=false 시 타이머 미발동. (PR #91 리뷰: 타이머 latest-ref 패턴으로 인라인 onClose 재전달 시 리셋 방지 + 회귀 테스트 1건 추가 → 6 tests)
+- **Task #20 — CandidateList 컴포넌트** (Story #7 / F-05, 2026.05.25):
+  - `src/hooks/useCandidates.ts` 신규 — 후보 목록을 노출하는 Business 브릿지 훅(useApiError·useSearchQuery와 동일 패턴). 컴포넌트가 store(Data)를 직접 구독하지 않게 함(3계층 준수, PR #88 교훈).
+  - `src/components/candidate/CandidateList.tsx` 신규 — 후보 목록을 `[썸네일 | 이름 | 삭제버튼]`으로 렌더. 빈 상태 안내, 썸네일/placeholder 분기(`next/image`), 삭제 버튼은 `onDelete(gameId)` prop으로 위임(동작 연결은 #22). 접근성: 삭제 버튼 터치 타겟 **≥44px**(a11y 오버라이드) + `aria-label`에 게임명 포함, `<ul role="list">` 시맨틱.
+  - `src/components/candidate/CandidateList.variants.ts`: tailwind-variants 분리. DESIGN.md neutral 카드 톤 + 삭제 버튼 hover 시 error(red) 톤(destructive 의미).
+  - `tests/unit/components/candidate/CandidateList.test.tsx` 신규 (4 tests) — 빈 상태 / 목록·이름 렌더 / 썸네일·placeholder 분기 / 삭제 버튼 onDelete(id) 위임.
+  - Story #7(후보 등록·중복 방지) 자식 Task #17·#18·#19·#20 **전부 완료** → Story #7 통합 준비.
 
 ### Deprecated
 - _(없음.)_
