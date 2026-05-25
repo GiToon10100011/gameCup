@@ -1,27 +1,31 @@
 "use client";
 
-// 후보 목록 컴포넌트 (F-05 표시·삭제 진입, Story #7 / Task #20).
+// 후보 목록 컴포넌트 (F-05 표시·삭제, Story #7 #20 + Story #8 #22).
 // useCandidates 브릿지 훅으로 후보 목록을 구독해 [썸네일 | 이름 | 삭제버튼]으로 렌더한다.
-// View는 store(Data)를 직접 구독하지 않는다(3계층 준수, PR #88 교훈). 삭제 "동작" 연결은 #22.
+// 삭제 버튼은 candidateModule.removeFromPool(Business)에 연결한다(#22). View는 store(Data)를
+// 직접 구독·변경하지 않고 항상 hook(useCandidates)·module(removeFromPool)을 경유한다 — 3계층 준수.
 //
 // 디자인 기준: docs/03-design/DESIGN.md(getdesign `clickhouse`). 접근성: 삭제 버튼 터치 타겟 ≥44px.
 
 import Image from "next/image";
 import { useCandidates } from "@/hooks/useCandidates";
+import { removeFromPool } from "@/modules/candidateModule";
 import { candidateListVariants } from "@/components/candidate/CandidateList.variants";
 
 // CandidateList의 외부 인터페이스. 컨벤션: 모든 `interface`는 `I` 접두사.
 interface ICandidateListProps {
-  // 삭제 버튼 클릭 시 호출 — 부모가 candidateModule.removeFromPool에 연결한다(#22).
-  onDelete: (gameId: string) => void;
+  // 삭제 버튼 클릭 시 호출. **미지정 시 candidateModule.removeFromPool로 기본 연결**(#22) —
+  // 별도 배선 없이도 삭제가 동작한다. 페이지가 추가 UX(확인 등)를 끼우려면 직접 넘겨 덮어쓴다.
+  onDelete?: (gameId: string) => void;
 }
 
 /**
  * 후보 목록.
  * - 후보가 없으면 빈 안내 문구만 표시
  * - 후보가 있으면 각 행에 썸네일·이름·삭제 버튼 렌더
+ * - 삭제 버튼은 기본적으로 removeFromPool을 호출(F-05) → store 갱신 → 목록 자동 리렌더
  */
-export function CandidateList({ onDelete }: ICandidateListProps) {
+export function CandidateList({ onDelete = removeFromPool }: ICandidateListProps = {}) {
   // 1) Business 브릿지 훅으로 후보 목록 구독 — 컴포넌트는 store를 직접 모름
   const candidates = useCandidates();
 
@@ -66,7 +70,7 @@ export function CandidateList({ onDelete }: ICandidateListProps) {
             {/* 게임명 */}
             <span className={name()}>{game.name}</span>
 
-            {/* 삭제 버튼 — 접근성 라벨에 게임명 포함. 동작은 onDelete prop으로 위임(#22 연결) */}
+            {/* 삭제 버튼 — 접근성 라벨에 게임명 포함. 클릭 시 onDelete(기본 removeFromPool) 호출(#22) */}
             <button
               type="button"
               aria-label={`후보에서 삭제: ${game.name}`}
