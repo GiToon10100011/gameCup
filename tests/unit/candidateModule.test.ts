@@ -1,8 +1,8 @@
 // 후보 등록·삭제·시작 조건 검증 모듈의 단위 테스트.
-// addToPool(등록, #18)을 본 Task에서 구현. removeFromPool(#21)·canStartTournament(토너먼트)는 todo 유지.
+// addToPool(등록, #18)·removeFromPool(삭제, #21)을 구현. canStartTournament(토너먼트)는 todo 유지.
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { addToPool } from "@/modules/candidateModule";
+import { addToPool, removeFromPool } from "@/modules/candidateModule";
 import { useStateStore } from "@/store/stateStore";
 import type { IGame } from "@/types/game";
 
@@ -48,8 +48,38 @@ describe("candidateModule (UT-10)", () => {
     });
   });
 
-  // ID 기반 삭제 — 동일 id 게임만 정확히 제거되어야 함 (Task #21에서 구현)
-  it.todo("removeFromPool은 ID로 후보를 제거한다");
+  // ───────────────────────────────────────────────────────────────────────────
+  // removeFromPool — 후보 삭제 액션 (#21, F-05)
+  // ───────────────────────────────────────────────────────────────────────────
+  describe("removeFromPool — 후보 삭제 (#21)", () => {
+    it("주어진 id의 후보만 제거한다 (F-05)", () => {
+      // 두 후보 등록 후 하나만 삭제 → 나머지 하나만 남아야 함
+      addToPool(mkGame("1"));
+      addToPool(mkGame("2"));
+
+      removeFromPool("1");
+
+      expect(useStateStore.getState().getCandidates().map((c) => c.id)).toEqual(["2"]);
+    });
+
+    it("존재하지 않는 id 삭제는 목록을 변경하지 않는다", () => {
+      addToPool(mkGame("1"));
+
+      // 없는 id 삭제 — 방어적으로 무변화여야 함(에러 없이)
+      removeFromPool("999");
+
+      expect(useStateStore.getState().getCandidates().map((c) => c.id)).toEqual(["1"]);
+    });
+
+    it("삭제 후 같은 게임을 다시 등록할 수 있다", () => {
+      // 삭제는 중복 판정 키(id)를 풀어주므로, 삭제 후 재등록이 성공해야 함
+      addToPool(mkGame("1"));
+      removeFromPool("1");
+
+      expect(addToPool(mkGame("1"))).toEqual({ ok: true });
+      expect(useStateStore.getState().getCandidates()).toHaveLength(1);
+    });
+  });
 
   // 토너먼트 시작 조건 — 후보 ≥ 2 (F-06 시작 가드, 토너먼트 Task에서 구현)
   it.todo("canStartTournament는 후보가 2개 이상일 때만 true를 반환한다");
