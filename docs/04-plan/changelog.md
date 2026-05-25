@@ -142,8 +142,13 @@
   - **env override 문서 동시 갱신:** `docs/06-setup/rawg-api-key.md` §5에 `NEXT_PUBLIC_RAWG_BASE_URL` 행 추가(선택·override·기본값 명시). `.env.local.example` 키 순서를 dotenv-linter(UnorderedKey) 기준으로 정렬(각 변수 주석 동반).
   - **기각/후속 분리:** `tailwind-merge@3 / tailwind-variants@3.2.2 vs tailwindcss@3.4.19` 버전 조합 경고 — `tailwind-variants@3.2.2`의 peer는 `tailwindcss: "*"` + `tailwind-merge`(optional `>=3.0.0`)로 **자체적으로 TW3 호환을 선언**하고, 현재 표준 유틸 사용 + build/test 그린이라 실동작 문제 없음. tailwind-merge v3의 TW4 최적화는 잠재 리스크로만 존재하며, deps 다운그레이드는 연쇄 변경 위험이 커 본 통합 범위 밖 — **후속 의존성 정렬 Task**로 분리(스레드에 근거 답변).
   - **Epic #1 → dev 머지 완료** (PR #97, 이슈 #1 close, feat/1 정리). **Epic #1(게임 검색·후보 관리) 완전 종료.**
+- **Iteration 4 재기획 착수 — 인증·멀티토너먼트·온보딩·결과 공유** (이슈 #100, 2026.05.25):
+  - 사용자 피드백으로 Iteration 3 단일 세션 모델의 구조적 갭 식별: ① 메인이 "바로 후보 선택"이라 **여러 토너먼트 생성·관리 불가** ② 빈 상태 **온보딩 부재** ③ **로그인/인증 이슈 0건**(사용자별 Supabase 저장 전제 누락) ④ 결과 **공유 기능 부재**. 모두 PRD Iteration 3 §5에서 Iteration 4/미정으로 이연했던 항목과 일치.
+  - **사용자 결정(2026.05.25):** 재기획 우선 + 순수 엔진 병행 / 데이터 모델 = 후보 세트(설문) 저장 + 결과 이력 둘 다 / 인증 = Supabase Auth **매직 링크** / 공유 = **링크 우선**(이미지 후순위).
+  - `docs/01-prd/iteration-4.md` (v4.0) 신규 작성(`docs-prd`, Iteration 3 불변): **F-14 인증·F-15 인증가드·F-16 토너먼트 생성저장·F-17 내 토너먼트 목록·F-18 온보딩**(핵심), **F-19 결과 이력·F-20 결과 공유 링크**(선택), **NF-06 RLS 데이터 격리·NF-07 세션 신뢰성**. 메인=토너먼트 허브로 전환, 검색·후보 컴포넌트는 생성 플로우로 재사용, Supabase가 Data 계층에 추가.
+  - **후속(같은 재기획):** UML v2.0(Supabase/User/Tournament/Result·authModule) · UC-05+ · Supabase setup 가이드 · tech-rationale · 백로그 재구성(인증·토너먼트관리·온보딩·공유 Epic 신설 + Epic #2 재배치).
 - **Sprint 2 착수 — Epic #2(토너먼트 진행) 이슈-브랜치 분기 + main 병합 정책 명문화** (이슈 #98, 2026.05.25):
-  - `docs/04-plan/sprint-2-mapping.md` 신설 — Sprint 1과 동일 형식. Epic #2 + Story #23·#24·#25·#26 + Task #27~#40 **총 19개 브랜치를 dev(992ae41) 기준 일괄 분기**, PR 위계 매핑·의존성·작업 흐름 정리.
+  - `docs/04-plan/sprint-2-mapping.md` 신설 — Sprint 1과 동일 형식. Epic #2 + Story #23·#24·#25·#26 + Task #27~#40 **총 19개 브랜치를 dev(992ae41) 기준 일괄 분기**, PR 위계 매핑·의존성·작업 흐름 정리. **(주: Iteration 4 재기획으로 Epic #2는 재배치 예정 — 엔진 Task는 유효, 플로우 Task는 허브 구조에 맞춰 재해석.)**
   - **main 병합 정책** (사용자 영구 지시 2026.05.25): `dev → main`은 **release 단계나 chore일 때만**. 일반 기능 통합은 dev에서 멈추고 자동 dev→main PR 금지. `CLAUDE.md` §9 안전 가드레일에 추가, 사용자 메모리 `feedback_no_main_merge_except_release_chore.md` 신설.
 - **머지 후 자동 브랜치 정리 + protected ruleset 작업 흐름 영구화** (사용자 영구 지시 2026.05.20, 이슈 #69):
   - **머지 후 자동 정리:** PR 머지 직후 `github` 에이전트가 head 브랜치를 원격·로컬 모두 삭제(`git push origin --delete` + `git branch -d`). Epic/Story 통합 베이스는 본 통합 PR 머지 시점에만.

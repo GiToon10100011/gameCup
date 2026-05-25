@@ -168,19 +168,48 @@
 
 ---
 
-## 9. Backend / Database (예정)
+## 9. Backend / Database
 
-### Supabase
-- **도입 시점:** Iteration 4 예정
-- **분류:** 외부 서비스 (DB · Auth · Storage)
+### Supabase (BaaS — DB · Auth · Storage)
+
+- **도입 시점:** Iteration 4 / 2026.05.25
+- **분류:** 외부 서비스 (BaaS — DB · Auth · Realtime · Storage)
 - **선택 이유:**
-  - 결과 저장/공유/랭킹 기능 도입 시 DB + 인증 + 이미지 스토리지를 단일 제공자로 해결
-  - Postgres 기반으로 향후 직접 호스팅 이주 시 데이터 이동 비용 낮음
-- **고려한 대안:** Firebase (NoSQL 잠금-in 우려), 자체 Postgres + Next.js API (운영 비용)
-- **트레이드오프:** 무료 등급 일/월 제한 + Vendor 의존
-- **교체 비용:** 중간 (Postgres 표준 SQL로 격리 시 낮춰짐)
-- **관련 요구사항:** (Iteration 4 신규 F-XX 후보군)
-- **관련 가이드:** `supabase-setup.md` (작성 예정)
+  - 인증(Supabase Auth 매직 링크)·PostgreSQL DB·RLS·Realtime 구독을 단일 BaaS로 제공 — 별도 백엔드 서버 없이 사용자별 토너먼트(설문) 생성·저장·관리(F-16·F-17), 결과 이력 보존(F-19), 공개 URL 공유(F-20)를 구현 가능
+  - PostgreSQL 기반이므로 향후 자체 호스팅(Railway·Neon 등)으로 이주 시 SQL·스키마를 그대로 이전 가능 — Vendor 종속 위험 최소화
+  - Row Level Security(RLS)로 사용자별 데이터 격리를 DB 계층에서 선언적으로 강제 — anon key 노출 시에도 타인 데이터 접근 차단 (NF-06)
+- **고려한 대안:**
+  - **Firebase(Firestore)**: NoSQL 구조로 관계형 쿼리 불리, GCP 생태계 락인, SQL 부재 → 향후 직접 호스팅 이전 비용 큼 → 탈락
+  - **자체 Node/Express + Postgres + 인증 구현**: 인증 보안(토큰 회전·세션 관리)·DB 운영·서버 유지 비용을 모두 직접 부담 → 토이/포트폴리오 규모에 비해 과부하 → 탈락
+  - **NextAuth.js + 별도 Postgres**: 인증은 처리하지만 DB·RLS·Realtime이 별개 → BaaS 통합 이점 없음, 설정 복잡도 높음 → 탈락
+  - **localStorage만 (Iteration 3 모델)**: 기기·브라우저 간 데이터 동기화 불가, 공개 공유 링크(F-20) 구현 불가, 타 기기에서 이력 조회(F-19) 불가 → Iteration 4 멀티 토너먼트 모델의 전제 자체 충족 안 됨 → 탈락
+- **트레이드오프:**
+  - 외부 서비스 의존 — Supabase 가용성 장애 시 인증·DB 전체 영향
+  - 무료 등급(Spark) 월 500MB DB / 50,000 MAU 제한 → 포트폴리오 규모에선 충분하나 트래픽 증가 시 과금 발생
+  - 프로젝트 일시정지 정책(비활성 7일 후 일시정지) — 포트폴리오 시연 전 직접 활성화 필요
+- **교체 비용:** 높음 (인증·DB·RLS 모두 Supabase 특화 구현에 의존. 단, Data 계층 `supabaseClient`에 격리되어 있어 게이트웨이 교체로 영향 범위를 국소화할 수 있고, SQL 스키마는 표준 Postgres이므로 DB 이전 비용은 중간 수준으로 낮출 수 있음)
+- **관련 요구사항:** F-14 · F-15 · F-16 · F-17 · F-18 · F-19 · F-20, NF-06, NF-07
+- **관련 가이드:** [`../06-setup/supabase-setup.md`](../06-setup/supabase-setup.md) (동시 작성 중)
+
+### Supabase Auth — 매직 링크(Passwordless)
+
+- **도입 시점:** Iteration 4 / 2026.05.25
+- **분류:** 외부 서비스 (인증)
+- **선택 이유:**
+  - 비밀번호 관리 부담(재설정·해시·유출 리스크) 없이 이메일만으로 로그인 가능 — 토이/포트폴리오 서비스에서 가입 마찰 최소화 (F-14)
+  - Supabase BaaS 내장 기능이므로 별도 인증 서버·라이브러리 추가 없이 `supabase.auth.signInWithOtp()` 단일 호출로 구현
+  - Supabase Auth의 표준 Refresh Token 메커니즘이 세션 자동 갱신·재연결을 처리 (NF-07)
+- **고려한 대안:**
+  - **소셜 OAuth(Google·GitHub 등)**: 각 provider 개발자 앱 등록 및 OAuth 설정 부담, Iteration 4 Out of Scope로 명시(§5) → 탈락
+  - **비밀번호 기반 인증**: 비밀번호 재설정 플로우·저장·유출 리스크 관리 필요 → Iteration 4 Out of Scope(§5) → 탈락
+  - **비인증 체험 모드(localStorage 한정)**: 기기 간 동기화·공유 불가 — Iteration 3 한계의 반복, Iteration 4 멀티 토너먼트 목표 달성 불가 → 탈락
+- **트레이드오프:**
+  - 사용자가 이메일 수신함을 열어야 로그인 완료 — 로그인 지연 발생 가능 (메일 수신 속도 의존)
+  - 이메일 스팸 필터에 걸리면 로그인 불가 → 사용자 경험 저하 위험
+  - Supabase 무료 등급 이메일 발송 한도(시간당 3건, 일 최대 제한) → 포트폴리오 트래픽에서는 충분하나 사용자 급증 시 병목
+- **교체 비용:** 중간 (Business 계층 `authModule` 내부로 격리되어 있어 OAuth·비밀번호 방식으로 전환 시 해당 모듈과 UI 흐름만 수정. Supabase Auth 자체를 교체하면 높음)
+- **관련 요구사항:** F-14 · F-15, NF-07
+- **관련 가이드:** [`../06-setup/supabase-setup.md`](../06-setup/supabase-setup.md) (동시 작성 중)
 
 ---
 
