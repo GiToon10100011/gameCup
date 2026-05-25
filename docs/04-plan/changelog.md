@@ -10,6 +10,7 @@
 코드 작업 중 발견된 PRD/설계 이탈 사항을 누적 기록한다. 충분히 쌓이면 [`../05-process/iteration-template.md`](../05-process/iteration-template.md)를 복사해 `01-prd/iteration-4.md` 등을 분기 생성한다.
 
 ### Added
+- **`tailwind-variants` + `tailwind-merge` 도입** (PR #64 리뷰 피드백): SearchDropdown의 4가지 상태 공통 스타일을 slots/variants로 모듈화. 기술 근거 [`../07-tech-rationale/README.md`](../07-tech-rationale/README.md) §3에 누적, `.env.local.example`에 RAWG BASE_URL override 변수(`NEXT_PUBLIC_RAWG_BASE_URL`) 추가.
 - **운영 도구: Linear 워크스페이스 보조 도입** (2026.05.23, 이슈 #76) — GameCup 팀(team id `eee1389e-3647-44fa-b1b1-64d123c102dc`) 신규 세팅. 주 트래커는 여전히 **GitHub Issues**이며, Linear는 이터레이션 단위 운영 시각화를 보조하기 위한 **별도 워크스페이스**로 운용한다.
 - **설정 가이드 신규:** [`../06-setup/linear-cycles.md`](../06-setup/linear-cycles.md) 추가. Linear Cycle(Sprint) cadence 초기화(4주·일요일 시작·첫 사이클 2026-05-24·미리 생성 1·cooldown 0) 절차와 검증 체크리스트. 8개 표준 섹션 포함.
 - **인덱스 갱신:** [`../06-setup/README.md`](../06-setup/README.md) 가이드 목록 표에 `linear-cycles.md` 행 추가 (도입 시점: Phase 0 후속 / 2026.05.21, 상태: 활성).
@@ -50,11 +51,96 @@
 - `CLAUDE.md` — 글로벌 `project-bootstrap`·`docs-builder` 안내 추가, 위임 결정 트리에 신규 프로젝트 초기화·문서 확장 라우팅 추가
 - `.claude/agents/issue-branch.md` · `.claude/agents/github.md` · `docs/04-plan/sprint-1-mapping.md` — `issues.md` 참조 경로를 `docs/04-plan/issues.md`로 갱신
 - `docs/README.md` — issues.md 새 위치 + 이슈 청사진 빠른 진입점 추가
+- **PR #64 리뷰 반영** (SearchDropdown, 2026.05.20):
+  - `src/components/search/SearchDropdown.tsx`: props `games` → `gameArray`(복수형 대신 자료형 명시), `tailwind-variants` slots/variants로 컨테이너·메시지·항목·썸네일·이름 5개 slot 추출
+  - `src/lib/externalApiClient.ts`: `RAWG_BASE_URL` 상수를 `NEXT_PUBLIC_RAWG_BASE_URL` env로 분리(미설정 시 공식 호스트 fallback)
+  - `src/modules/tournamentModule.ts`: filter/forEach/map 콜백 매개변수 `m` → `match` 명시화
+  - `tests/unit/components/search/SearchDropdown.test.tsx`: Vitest/RTL 각 import 심볼·매처 역할을 학습용 주석으로 보강, 신규 props 이름 반영
+- **PR #64 후속 리뷰 반영** (variants 분리, 2026.05.20):
+  - `src/components/search/SearchDropdown.variants.ts` 신규 — `tv()` 정의를 컴포넌트 파일에서 분리(`dropdownVariants` export)
+  - `CLAUDE.md` §5 코딩 컨벤션에 "스타일 variants 분리" 규칙 영구 추가
+  - 사용자 메모리 `feedback_variants_separate_file.md` 신설 — 모든 프로젝트 공통 컨벤션화
+- **Task #11 — `searchGames()` 단위 테스트** (2026.05.20):
+  - `tests/unit/lib/externalApiClient.test.ts` 신규 — `fetchGames` 5건 (정상 정규화 / null thumbnail fallback / HTTP 500 → ExternalApiError / API 키 누락 즉시 throw / BASE_URL override)
+  - `tests/unit/searchModule.test.ts` 신규 — `validateQuery`·`search` 8건 (빈/공백 검색어 차단 / 캐시 적중 NF-05 / 캐시 미스 → fetch + 저장 / 동일 검색어 재호출 시 외부 호출 0)
+  - 외형(`fetchGames`/`search`)은 이미 UML v1.1과 일치하는 상태로 존재했으며, 본 Task에서 동작 검증을 단위 테스트로 보강
+- **Task #12 — 세션 내 검색 결과 캐싱 (Map 기반)** (2026.05.20):
+  - `tests/unit/stateStore.cache.test.ts` 신규 (6 tests) — store 레벨 캐시 동작 직접 검증: 초기 undefined / 저장-조회 라운드트립 / 검색어별 격리 / setCache가 새 Map 인스턴스 생성(React 리렌더 트리거) / 동일 검색어 덮어쓰기 / resetAll 후 캐시 비움 + 재사용 가능
+  - 캐시 로직 자체(`searchCache: Map<string, IGame[]>` + `getCache`/`setCache`)는 이미 UML v1.1 §StateStore와 일치하게 구현되어 있었으며, 본 Task에서 store 레벨 동작 보증을 추가
 - **PR 머지 후 이슈 자동 close 컨벤션 영구화** (사용자 영구 지시, 2026.05.20):
   - `Closes #N` 자동 닫힘은 PR base가 default branch일 때만 동작 → 본 프로젝트의 PR 위계 흐름(Task PR → Story 브랜치)에서는 자동 close 미동작. `github` 에이전트가 머지 직후 본문의 `Closes` 토큰을 파싱해 `gh issue close <N> --reason completed`로 직접 닫고 사용자에게 보고
   - `CLAUDE.md` §9 안전 가드레일 + `.claude/agents/github.md` §PR 절차 4에 명문화
   - 사용자 메모리 `feedback_pr_merge_auto_close.md` 신설 (모든 프로젝트 공통)
   - 밀려 있던 #9, #10, #11 수동 close 완료
+- **Task #13 — 검색 응답 시간 측정 (NF-01)** (2026.05.20):
+  - `src/utils/measureAsync.ts` 신규 — `measureAsync(fn, onMeasure)` 범용 비동기 시간 측정 유틸 (성공/실패 모두 측정, `performance.now()` 우선, `Date.now()` fallback)
+  - `src/modules/searchModule.ts` — `SEARCH_RESPONSE_TIME_BUDGET_MS = 1000` 상수, 모듈 내부 `lastSearchDurationMs` + `getLastSearchDurationMs()` getter, `resetSearchDurationMeasurement()`, search() 캐시 미스 분기에서 `measureAsync`로 응답 시간 측정. 임계치(1000ms) 초과 시 `console.warn`, 그 이하는 `console.debug` (production 환경에서는 로깅 생략)
+  - `tests/unit/measureAsync.test.ts` 신규 (3 tests) — 성공/실패/0ms 케이스
+  - `tests/unit/searchModule.test.ts` 확장 (+5 tests) — 임계치 상수 / 초기 null / 캐시 미스 시 측정 / NF-01 위반 경고 / 캐시 적중 시 측정 안 함 / 실패 시도 진단용 측정 보존
+- **PR #74 (Story #5 통합) 리뷰 반영** (CodeRabbit 30건 중 동작/안전 영향분, 2026.05.21):
+  - `src/components/search/SearchDropdown.tsx`: ARIA listbox/option 안 button 중첩 제거 — `<li role="option">`에 `tabIndex`·`onClick`·`onKeyDown` 직접 부여. 형제 파일 import도 `@/components/search/...` alias로 통일
+  - `src/lib/externalApiClient.ts`: JSON 파싱 실패·`results` 형태 이상도 `ExternalApiError`로 통일해 상위가 단일 catch로 처리 가능
+  - `src/utils/measureAsync.ts`: `onMeasure` 콜백이 throw해도 `fn`의 원래 성공/실패 의미가 오염되지 않도록 `safeMeasure()` 헬퍼로 격리
+  - `src/modules/searchModule.ts`: 캐시 적중·빈 검색어 등 외부 호출 없는 분기에서 `lastSearchDurationMs`를 `null`로 명시 리셋 — "마지막 호출" 계약 유지
+  - `src/hooks/useSearchQuery.ts`: `normalizedQuery = debouncedQuery.trim()`을 queryKey·queryFn·enabled 세 곳에 동일 적용해 정규화 일관성 확보
+  - `.husky/prepare-commit-msg`: 첫 제목 탐색에서 공백 라인도 제외 (`grep -vE '^[[:space:]]*(#|$)'`)
+  - `.claude/agents/issue-branch.md`: 이슈 조회·브랜치 생성을 `gh` CLI 1순위·MCP fallback으로 명문화 (`github.md`와 일치)
+  - `CLAUDE.md` §5 파일명 규칙: kebab-case 강제가 아니라 카테고리별 관례(모듈/훅=camelCase, 컴포넌트=PascalCase, 문서=kebab-case)로 명확화
+  - 문서 markdownlint 경고 정리: 코드 펜스 언어 명시(`text`), 헤더 후 빈 줄, 코드 스팬 공백 제거 (`docs/04-plan/{issues,sprint-1-mapping}.md`, `docs/06-setup/git-hooks.md`, `docs/07-tech-rationale/README.md`, `.claude/agents/github.md`)
+  - `tests/unit/components/search/SearchInput.test.tsx`: 호출 횟수(`toHaveBeenCalledTimes(1)`) 단언 추가 — 회귀 방지
+  - **기각:** 모든 `//` 주석을 `/* */` 블록 주석으로 강제 변환 제안 — 코드 블록마다 한국어 주석 정책은 형식이 아니라 위치를 강제하므로 현재 혼합 방식 유지 (사용자 결정)
+  - **후속 이슈로 분리(#75):** `candidateModule`/`tournamentModule`/`useDebounce`의 `it.todo` 테스트 실구현 — 각 모듈의 본 구현 Task(#17, #23 등)와 함께 진행
+- **Task #14 — API 호출 에러 핸들러 (try/catch + 상태 반영)** (Story #6 / F-11, 2026.05.24):
+  - `src/store/stateStore.ts`: API 에러 상태 `apiError: IApiError | null` 필드 + `setApiError`/`clearApiError` 액션 추가. `initialState`에 포함돼 `resetAll`에서 함께 초기화. **(UML v1.1 §StateStore 시그니처 변경 → UML v1.2 분기 시 반영 대상)**
+  - `src/modules/searchModule.ts`: `toApiError(error: unknown): IApiError` — 임의 throw 값을 표준 에러 형태로 정규화(`ExternalApiError`는 statusCode 보존, 일반 Error는 0, 그 외는 기본 문구). `searchWithErrorHandling(query)` — `search()`를 try/catch로 감싸 성공 시 `clearApiError`+결과 반환, 실패 시 `setApiError`+빈 배열 반환(graceful degradation, #16 오류 상태 안정성). **(UML §SearchModule 시그니처 변경 → UML v1.2 반영 대상)**
+  - `src/hooks/useSearchQuery.ts`: `queryFn`을 `search` → `searchWithErrorHandling`로 교체 — 실제 View 호출 경로에서 에러가 store에 반영되도록 연결(ErrorMessage #15가 구독 예정)
+  - `tests/unit/stateStore.error.test.ts` 신규 (5 tests) — apiError 초기 null / 반영·조회 / clear·setApiError(null) 해제 / resetAll 초기화
+  - `tests/unit/searchModule.error.test.ts` 신규 (8 tests) — toApiError 3종 정규화 / 성공 시 결과+에러 해제 / 실패 시 빈 배열+상태 반영 / 실패 결과 캐시 미저장 / 실패→재시도 성공 복귀
+- **Task #15 — ErrorMessage 컴포넌트 (인라인 오류 표시)** (Story #6 / F-11, 2026.05.24):
+  - `src/components/ui/ErrorMessage.tsx`: `store.apiError`(Task #14)를 구독해 오류가 있으면 인라인 alert 표시, 없으면 렌더 안 함. `role="alert"`+`aria-live="assertive"`로 즉시 통지, statusCode>0일 때만 보조 코드 표기, 닫기(✕) 버튼은 `clearApiError` 호출. 3계층 준수(View는 store 상태만 구독).
+  - `src/components/ui/ErrorMessage.variants.ts`: tailwind-variants 분리(컨벤션). **디자인 기준 `docs/03-design/DESIGN.md`(getdesign `clickhouse`)의 error 토큰 `#ef4444`(red-500 계열)** 적용. 닫기 버튼은 **a11y 오버라이드로 터치 타겟 ≥44×44px(`h-11 w-11`)** — ClickHouse 템플릿 36px가 WCAG 2.5.5 미만이라 인터랙티브 요소는 상향.
+  - `tests/unit/components/ui/ErrorMessage.test.tsx` 신규 (6 tests) — null 미렌더 / role=alert 메시지 / statusCode 표기 분기 / 닫기→해제 / dismissible=false.
+- **Task #16 — 오류 상태 안정성 테스트** (Story #6 / F-11, 2026.05.25):
+  - `tests/unit/error-state-stability.test.tsx` 신규 (5 tests) — searchModule(`searchWithErrorHandling`) + stateStore(`apiError`) + ErrorMessage 컴포넌트 통합 검증: ① API 실패가 예외로 전파되지 않고 `[]`로 안전 응답 ② 오류가 기존 캐시·후보 상태를 훼손하지 않음 ③ 오류→ErrorMessage 자동 표시→성공 검색 시 배너 사라짐(라이브 구독, `act`로 재렌더 flush) ④ 연속 실패에도 매번 응답하며 최신 오류 반영 ⑤ 오류 중에도 후보 등록·삭제 등 다른 store 동작 정상.
+  - Story #6(API 오류 안내) 자식 Task #14·#15·#16 **전부 완료** → Epic #1 통합 준비.
+- **Story #6 통합 PR #88 리뷰 반영** (CodeRabbit Major 2건, 2026.05.25):
+  - **3계층 준수:** `src/hooks/useApiError.ts` 신규 — Presentation(ErrorMessage)이 `stateStore`(Data)를 직접 구독하던 것을 Business 브릿지 훅으로 분리(useSearchQuery와 동일 패턴). `ErrorMessage.tsx`는 `useApiError()`만 의존.
+  - **동시 요청 레이스 가드:** `searchModule.ts`에 `latestSearchRequestId` 도입 — `searchWithErrorHandling`이 자기 요청이 최신일 때만 `store`에 상태 반영. 늦게 끝난 과거 실패가 최신 성공의 `clearApiError`를 덮어쓰는 문제 차단. `searchModule.error.test.ts`에 레이스 가드 테스트 1건 추가.
+- **Task #17 — 후보 목록 store 검증** (Story #7 / F-04·F-05, 2026.05.25):
+  - `tests/unit/stateStore.candidates.test.ts` 신규 (7 tests) — 후보 store(`candidates`/`addCandidate`/`removeCandidate`/`getCandidates`) 동작 검증: 초기 빈 배열 / 등록 성공(true) / **중복 id 등록 거부(false, F-04)** / 서로 다른 id 누적 / 불변 업데이트(새 배열 참조) / 삭제 해당 id만(F-05)·없는 id 무변화 / resetAll 초기화·재등록.
+  - 후보 store 자체(`candidates: IGame[]` + 액션)는 이미 UML v1.1 §StateStore와 일치하게 스캐폴딩돼 있었으며, 본 Task에서 store 레벨 동작 보증을 추가(#11/#12와 동일 패턴).
+- **Task #18 — 후보 등록 액션(candidateModule.addToPool) 테스트** (Story #7 / F-03·F-04, 2026.05.25):
+  - `tests/unit/candidateModule.test.ts` — `it.todo` 스텁을 실테스트로 구현(addToPool 부분): 신규 등록 시 `{ ok: true }`+추가(F-03) / 중복 id 시 `{ ok: false, reason: "duplicate" }`+무시(F-04) / 서로 다른 게임 연속 등록 성공. `removeFromPool`(#21)·`canStartTournament`(토너먼트)는 todo 유지.
+  - 등록 액션 `addToPool`(store `addCandidate`를 discriminated union 결과로 래핑)은 Business 레이어에 이미 존재했고, 본 Task에서 동작(특히 F-04 중복 사유 반환) 검증을 추가.
+- **Task #19 — 중복 알림 토스트 컴포넌트** (Story #7 / F-04, 2026.05.25):
+  - `src/components/candidate/DuplicateToast.tsx` 신규 — `addToPool`이 `{ ok:false, reason:"duplicate" }`일 때 부모가 띄우는 일시 토스트. props 제어(`open`/`message`/`onClose`/`durationMs`), `durationMs`(기본 3s) 후 자동 닫힘. 비-긴급이라 `role="status"`+`aria-live="polite"`.
+  - `src/components/candidate/DuplicateToast.variants.ts`: tailwind-variants 분리. **DESIGN.md(clickhouse) warning 토큰 `#f59e0b`(amber 계열)** — 중복은 에러(빨강)가 아닌 "주의"라 amber로 구분.
+  - `tests/unit/components/candidate/DuplicateToast.test.tsx` 신규 (5 tests) — open false/true 표시·비표시 / 기본·커스텀 메시지 / durationMs 후 자동 onClose(fake timers) / open=false 시 타이머 미발동. (PR #91 리뷰: 타이머 latest-ref 패턴으로 인라인 onClose 재전달 시 리셋 방지 + 회귀 테스트 1건 추가 → 6 tests)
+- **Task #20 — CandidateList 컴포넌트** (Story #7 / F-05, 2026.05.25):
+  - `src/hooks/useCandidates.ts` 신규 — 후보 목록을 노출하는 Business 브릿지 훅(useApiError·useSearchQuery와 동일 패턴). 컴포넌트가 store(Data)를 직접 구독하지 않게 함(3계층 준수, PR #88 교훈).
+  - `src/components/candidate/CandidateList.tsx` 신규 — 후보 목록을 `[썸네일 | 이름 | 삭제버튼]`으로 렌더. 빈 상태 안내, 썸네일/placeholder 분기(`next/image`), 삭제 버튼은 `onDelete(gameId)` prop으로 위임(동작 연결은 #22). 접근성: 삭제 버튼 터치 타겟 **≥44px**(a11y 오버라이드) + `aria-label`에 게임명 포함, `<ul role="list">` 시맨틱.
+  - `src/components/candidate/CandidateList.variants.ts`: tailwind-variants 분리. DESIGN.md neutral 카드 톤 + 삭제 버튼 hover 시 error(red) 톤(destructive 의미).
+  - `tests/unit/components/candidate/CandidateList.test.tsx` 신규 (4 tests) — 빈 상태 / 목록·이름 렌더 / 썸네일·placeholder 분기 / 삭제 버튼 onDelete(id) 위임.
+  - Story #7(후보 등록·중복 방지) 자식 Task #17·#18·#19·#20 **컴포넌트·로직 전부 완료**(F-03 등록·F-04 중복·F-05 표시) → Story #7 통합 준비.
+  - **범위 메모 (PR #93 리뷰):** Story #7 수용기준 중 *"후보 목록에 게임이 추가된 후 검색 드롭다운이 닫힌다"*(issues.md L231)는 컴포넌트 단위가 아니라 **페이지 배선 동작**이다(부모가 `SearchDropdown.isOpen`을 추가 성공 후 닫음). `SearchDropdown`은 `isOpen`을 부모 제어로 두고 있어, 이 닫힘 동작 + onSelect→addToPool→토스트/목록 연결은 **Epic #1 통합(메인 페이지 조립)** 에서 수행한다. 따라서 #17~#20 범위에는 미포함.
+- **Task #21 — 후보 삭제 액션(candidateModule.removeFromPool) 테스트** (Story #8 / F-05, 2026.05.25):
+  - `tests/unit/candidateModule.test.ts` — `removeFromPool` it.todo를 실테스트로 구현(3): 주어진 id만 제거(F-05) / 없는 id 삭제는 무변화(방어) / 삭제 후 같은 게임 재등록 가능. `canStartTournament`(토너먼트)는 todo 유지.
+  - 삭제 액션 `removeFromPool`(store `removeCandidate` 위임)은 Business 레이어에 이미 존재했고, 본 Task에서 동작 검증을 추가. 삭제 버튼 **동작 연결**(CandidateList onDelete → removeFromPool)은 #22.
+- **Task #22 — 삭제 버튼 동작 연결** (Story #8 / F-05, 2026.05.25):
+  - `src/components/candidate/CandidateList.tsx`: `onDelete` prop을 **선택적**으로 바꾸고 미지정 시 `candidateModule.removeFromPool`로 **기본 연결**. 별도 배선 없이도 삭제 버튼이 동작(Presentation→Business 방향 준수). 페이지가 추가 UX를 끼우려면 `onDelete`를 넘겨 덮어쓴다.
+  - `tests/unit/components/candidate/CandidateList.test.tsx` (+1, 총 5): onDelete 미지정 시 삭제 버튼이 실제로 후보를 제거(store 갱신 + 목록 리렌더)하는지 검증. 기존 커스텀 onDelete 테스트는 오버라이드 경로(removeFromPool 미호출)로 명확화.
+  - **Story #8(후보 삭제) 자식 Task #21·#22 전부 완료** → Story #8 통합 준비. **Sprint 1의 마지막 컴포넌트 Task 완료** — 이후 Epic #1 통합에서 메인 페이지 조립.
+- **Epic #1 통합 — 메인 페이지 조립** (Story #5·#6·#7·#8 배선, 2026.05.25):
+  - Story #8 통합 PR #96(feat/8 → feat/1) 머지 + 이슈 #8 close + feat/8 정리 → **Epic #1(게임 검색·후보 관리)의 4개 Story 전부 완료**(#5·#6·#7·#8 모두 CLOSED).
+  - `src/app/page.tsx`: placeholder를 걷어내고 전체 사용자 흐름을 조립 — `SearchInput`→`useSearchQuery`→`SearchDropdown`(검색), `addToPool`(등록), `ErrorMessage`(오류, F-11), `CandidateList`(목록·삭제, F-05), `DuplicateToast`(중복, F-04). 페이지는 배선만 담당하고 도메인 로직은 기존 훅·모듈에 위임(3계층 준수). `"use client"`로 전환.
+  - **"추가 후 드롭다운 닫힘" 배선 완료** — Story #7 수용기준 중 페이지 동작이라 #17~#20에서 보류됐던 항목(위 PR #93 범위 메모). 부모가 `isDropdownOpen` state로 `SearchDropdown.isOpen`을 제어, 후보 선택 성공/중복 시 모두 닫음. 드롭다운은 `relative` 섹션 + `absolute top-full` 오버레이로 띄워 후보 목록을 밀어내지 않음.
+  - `tests/unit/app/home-flow.test.tsx` 신규(4): 검색→드롭다운 결과 표시(#5) / 선택→후보 추가 + 드롭다운 닫힘(#7 AC) / 중복 재선택→토스트(F-04) / API 실패→오류 배너(F-11). `fetchGames`만 mock, 실제 타이머+`findBy`/`waitFor`로 디바운스·비동기 쿼리 대기(fake timer×TanStack Query 취약성 회피). 전체 **103 passed / 7 todo**, build `/` 라우트 정상 프리렌더(24.5 kB).
+  - **알려진 갭(후속):** 머지·리뷰된 자식 컴포넌트들은 neutral 라이트/다크 팔레트를 쓰는데, `docs/03-design/DESIGN.md`(getdesign `clickhouse`)는 dark + electric-yellow 토큰이다. 페이지 셸은 DESIGN.md의 **구조 토큰**(4px 간격·타이포 위계·radius)만 따르고 팔레트는 컴포넌트와 일관되게 neutral로 통일 — 전면 디자인 토큰 정렬은 본 통합 범위 밖, 후속 디자인 정렬 Task로 분리한다.
+- **PR #97 (Epic #1 통합) 리뷰 반영 + dev 머지 충돌 해소** (CodeRabbit 누적 diff 리뷰, 2026.05.25):
+  - **충돌 해소:** `feat/1`에 `dev`를 머지하며 `CLAUDE.md`(§5 컨벤션 표 — variants 분리 행 + UI 디자인 기준 행 **둘 다 유지**)와 `docs/04-plan/changelog.md`(Added 항목 양측 병합) 충돌 해소. 이 머지로 `docs/03-design/DESIGN.md`·coderabbit-notify 워크플로우·linear-cycles 가이드 등 dev 후속 자산이 `feat/1`에 합류.
+  - **키보드 선택 테스트 추가:** `tests/unit/components/search/SearchDropdown.test.tsx` (+1, 총 8) — `<li role="option">`의 Enter/Space 선택 경로 + 비선택 키(ArrowDown) 회귀 검증. 클릭만 있던 커버리지 갭 보강.
+  - **env override 문서 동시 갱신:** `docs/06-setup/rawg-api-key.md` §5에 `NEXT_PUBLIC_RAWG_BASE_URL` 행 추가(선택·override·기본값 명시). `.env.local.example` 키 순서를 dotenv-linter(UnorderedKey) 기준으로 정렬(각 변수 주석 동반).
+  - **기각/후속 분리:** `tailwind-merge@3 / tailwind-variants@3.2.2 vs tailwindcss@3.4.19` 버전 조합 경고 — `tailwind-variants@3.2.2`의 peer는 `tailwindcss: "*"` + `tailwind-merge`(optional `>=3.0.0`)로 **자체적으로 TW3 호환을 선언**하고, 현재 표준 유틸 사용 + build/test 그린이라 실동작 문제 없음. tailwind-merge v3의 TW4 최적화는 잠재 리스크로만 존재하며, deps 다운그레이드는 연쇄 변경 위험이 커 본 통합 범위 밖 — **후속 의존성 정렬 Task**로 분리(스레드에 근거 답변).
 - **머지 후 자동 브랜치 정리 + protected ruleset 작업 흐름 영구화** (사용자 영구 지시 2026.05.20, 이슈 #69):
   - **머지 후 자동 정리:** PR 머지 직후 `github` 에이전트가 head 브랜치를 원격·로컬 모두 삭제(`git push origin --delete` + `git branch -d`). Epic/Story 통합 베이스는 본 통합 PR 머지 시점에만.
   - **protected ruleset 흐름:** main/dev 등 protected 브랜치에 직접 커밋·푸시 금지. 모든 변경(운영/문서 포함)은 ① 이슈 생성 → ② dev에서 브랜치 분기 → ③ 작업·커밋 → ④ PR(base=dev) → ⑤ 머지 절차.

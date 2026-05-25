@@ -100,7 +100,7 @@
 
 | 항목 | 규칙 |
 | --- | --- |
-| 파일명 | kebab-case (예: `tournament-module.ts`는 ❌, `tournamentModule.ts`는 ✅ — 모듈은 camelCase. 컴포넌트는 PascalCase) |
+| 파일명 | 카테고리별로 다름. 모듈·스토어·훅·유틸은 **camelCase** (`searchModule.ts`, `useDebounce.ts`), 컴포넌트는 **PascalCase** (`SearchInput.tsx`), 문서·설정은 **kebab-case** (`iteration-3.md`, `next.config.mjs`). 하나의 규칙으로 강제하지 않고 카테고리별 관례를 따른다. |
 | 컴포넌트 | PascalCase + 폴더 분류 (`components/search/SearchBar.tsx`) |
 | 모듈/스토어 | camelCase (`searchModule.ts`, `stateStore.ts`) |
 | 타입 | PascalCase, `types/` 폴더 집중 |
@@ -108,6 +108,7 @@
 | Path alias | `@/*` → `src/*` |
 | 3계층 호출 방향 | Presentation → Business → Data (역방향·건너뛰기 금지) |
 | **블록 주석** | **새로 작성하는 모든 코드는 함수·effect·분기·jsx 섹션·테스트 그룹마다 한국어 주석 필수** (교육·포트폴리오 목적). WHY 우선, WHAT은 자명하지 않을 때만 |
+| **스타일 variants 분리** | `tailwind-variants` 정의는 컴포넌트 파일에 인라인 작성 금지. 같은 폴더에 `<ComponentName>.variants.ts`로 분리해 `export const <name>Variants = tv({ slots, variants })` 형태로 내보내고, 컴포넌트는 `import { <name>Variants } from "./<ComponentName>.variants"`로 사용. 재사용·시각 회귀 분리·Storybook 도입 대비 (PR #64 리뷰 영구 반영) |
 | **UI 디자인 기준** | **UI(컴포넌트·화면)를 신규 제작·수정하기 전 반드시 [`docs/03-design/DESIGN.md`](docs/03-design/DESIGN.md)를 참조**한다. 색·타이포·간격·컴포넌트 토큰의 단일 기준이며, 현재 템플릿은 `getdesign`의 **`clickhouse`**다. 디자인 토큰 갱신이 필요하면 `npx getdesign@latest add clickhouse`로 루트에 `DESIGN.md`를 재생성한 뒤 `docs/03-design/`로 이동해 교체한다(다른 디자인으로 바꿀 땐 `clickhouse` 자리에 원하는 템플릿명을 지정). 비-UI 로직(모듈·스토어·유틸)에는 해당 없음 (사용자 영구 지시 2026.05.24) |
 
 ---
