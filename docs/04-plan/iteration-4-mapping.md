@@ -24,7 +24,7 @@
 | **Task** #124·#125 | Story #123 | `feat/123-result-history` |
 | **Task** #127·#128·#129 | Story #126 | `feat/126-result-share` |
 | **Story** #123·#126 | Epic #3 (기존, 확장) | `feat/3-epic-result-restart` |
-| **Epic** #102·#113 | (통합) | `dev` |
+| **Epic** #102·#113·#3 | (통합) | `dev` |
 
 **PR 흐름:** Task PR → Story 브랜치 → Epic 브랜치 → dev. `dev → main`은 release/chore 시에만(CLAUDE.md §9).
 
