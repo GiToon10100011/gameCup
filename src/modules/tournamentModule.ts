@@ -40,14 +40,31 @@ export function selectWinner(pair: ITournamentPair, choice: IGame): void {
   const isMember = choice.id === pair.gameA.id || choice.id === pair.gameB?.id;
   if (!isMember) return;
 
-  // 2) 승자를 다음 라운드 큐에 추가하고 현재 페어의 winner 필드를 갱신
-  // map 콜백 매개변수도 match로 명시 (단문자 m 지양)
+  // 2) setRoundState를 호출하기 전에 현재 nextRoundQueue를 보존한다.
+  //    setRoundState는 새 라운드 초기화(advanceRound)에서도 쓰이므로 내부에서
+  //    nextRoundQueue를 [] 로 초기화한다. selectWinner는 같은 라운드 내에서
+  //    winner만 갱신하는 동작이므로 기존 큐를 잃어서는 안 된다.
+  //    버그 수정(#75): 이전 코드는 이 보존 없이 pushToNextRound → setRoundState
+  //    순서로 호출해 방금 추가한 승자가 즉시 사라지는 버그가 있었다.
   const store = useStateStore.getState();
-  store.pushToNextRound(choice);
+  const existingQueue = [...store.nextRoundQueue]; // 현재 큐 스냅샷 보존
+
+  // 3) 현재 페어의 winner 필드를 갱신한 새 matches 배열을 만든다.
+  //    map 콜백 매개변수도 match로 명시 (단문자 m 지양)
   const updated = store
     .getCurrentMatches()
     .map((match) => (match === pair ? { ...match, winner: choice } : match));
-  store.setRoundState(store.getCandidates().length > 0 ? getCurrentRound() : 1, updated);
+
+  // 4) setRoundState로 matches를 교체한다. 이 시점에 nextRoundQueue는 [] 가 된다.
+  //    버그 수정(#75-라운드번호): 이전 코드는 candidates.length > 0 조건으로
+  //    라운드 번호를 결정했으나, 후보 목록 크기와 현재 라운드는 무관하다.
+  //    selectWinner는 라운드를 바꾸지 않으므로 항상 getCurrentRound()를 그대로 유지한다.
+  store.setRoundState(getCurrentRound(), updated);
+
+  // 5) 이전 큐를 복원한 다음 새 승자를 추가한다.
+  //    라운드 내에서 여러 페어를 순서대로 선택할 때도 큐가 올바르게 누적된다.
+  existingQueue.forEach((game) => store.pushToNextRound(game));
+  store.pushToNextRound(choice);
 }
 
 /**

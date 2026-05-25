@@ -172,7 +172,12 @@
 - _(없음.)_
 
 ### Fixed
-- _(없음.)_
+- **`tournamentModule.selectWinner` 버그 2건** (이슈 #75 테스트 구현 중 발견, 2026.05.26):
+  - **라운드 번호 오산:** `setRoundState(candidates.length > 0 ? getCurrentRound() : 1, ...)` — 후보 목록 크기로 라운드 번호를 정하던 로직을 제거하고 현재 라운드(`getCurrentRound()`)를 보존하도록 수정. selectWinner는 라운드를 바꾸지 않음.
+  - **nextRoundQueue 소실:** `setRoundState`가 내부적으로 `nextRoundQueue`를 `[]`로 초기화하는데, selectWinner가 `pushToNextRound → setRoundState` 순서라 방금 추가한 승자가 즉시 사라졌음. setRoundState 전 큐를 스냅샷 보존 후 복원 + 승자 추가로 수정. (이중 클릭 가드는 #32 범위로 분리)
+
+### Added
+- **이슈 #75 — 미구현 단위 테스트 7건 실구현** (2026.05.26): `it.todo`로 남아 있던 테스트를 실제 단언으로 전환 — `tournamentModule.test.ts` 5건(UT-06 selectWinner / UT-07·08 advanceRound / startTournament 가드 F-06 / 부전승 F-09), `candidateModule.test.ts` 1건(canStartTournament F-06), `useDebounce.test.ts` 1건(fake timer 기반 연속 입력 마지막 값). 전체 **114 passed / 0 todo**. (PR #74 리뷰 후속, #28·#29 셔플/페어 유틸은 스캐폴딩 완료 확인 후 close.)
 
 ---
 
