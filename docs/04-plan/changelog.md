@@ -92,6 +92,23 @@
 - **Story #6 통합 PR #88 리뷰 반영** (CodeRabbit Major 2건, 2026.05.25):
   - **3계층 준수:** `src/hooks/useApiError.ts` 신규 — Presentation(ErrorMessage)이 `stateStore`(Data)를 직접 구독하던 것을 Business 브릿지 훅으로 분리(useSearchQuery와 동일 패턴). `ErrorMessage.tsx`는 `useApiError()`만 의존.
   - **동시 요청 레이스 가드:** `searchModule.ts`에 `latestSearchRequestId` 도입 — `searchWithErrorHandling`이 자기 요청이 최신일 때만 `store`에 상태 반영. 늦게 끝난 과거 실패가 최신 성공의 `clearApiError`를 덮어쓰는 문제 차단. `searchModule.error.test.ts`에 레이스 가드 테스트 1건 추가.
+- **Task #17 — 후보 목록 store 검증** (Story #7 / F-04·F-05, 2026.05.25):
+  - `tests/unit/stateStore.candidates.test.ts` 신규 (7 tests) — 후보 store(`candidates`/`addCandidate`/`removeCandidate`/`getCandidates`) 동작 검증: 초기 빈 배열 / 등록 성공(true) / **중복 id 등록 거부(false, F-04)** / 서로 다른 id 누적 / 불변 업데이트(새 배열 참조) / 삭제 해당 id만(F-05)·없는 id 무변화 / resetAll 초기화·재등록.
+  - 후보 store 자체(`candidates: IGame[]` + 액션)는 이미 UML v1.1 §StateStore와 일치하게 스캐폴딩돼 있었으며, 본 Task에서 store 레벨 동작 보증을 추가(#11/#12와 동일 패턴).
+- **Task #18 — 후보 등록 액션(candidateModule.addToPool) 테스트** (Story #7 / F-03·F-04, 2026.05.25):
+  - `tests/unit/candidateModule.test.ts` — `it.todo` 스텁을 실테스트로 구현(addToPool 부분): 신규 등록 시 `{ ok: true }`+추가(F-03) / 중복 id 시 `{ ok: false, reason: "duplicate" }`+무시(F-04) / 서로 다른 게임 연속 등록 성공. `removeFromPool`(#21)·`canStartTournament`(토너먼트)는 todo 유지.
+  - 등록 액션 `addToPool`(store `addCandidate`를 discriminated union 결과로 래핑)은 Business 레이어에 이미 존재했고, 본 Task에서 동작(특히 F-04 중복 사유 반환) 검증을 추가.
+- **Task #19 — 중복 알림 토스트 컴포넌트** (Story #7 / F-04, 2026.05.25):
+  - `src/components/candidate/DuplicateToast.tsx` 신규 — `addToPool`이 `{ ok:false, reason:"duplicate" }`일 때 부모가 띄우는 일시 토스트. props 제어(`open`/`message`/`onClose`/`durationMs`), `durationMs`(기본 3s) 후 자동 닫힘. 비-긴급이라 `role="status"`+`aria-live="polite"`.
+  - `src/components/candidate/DuplicateToast.variants.ts`: tailwind-variants 분리. **DESIGN.md(clickhouse) warning 토큰 `#f59e0b`(amber 계열)** — 중복은 에러(빨강)가 아닌 "주의"라 amber로 구분.
+  - `tests/unit/components/candidate/DuplicateToast.test.tsx` 신규 (5 tests) — open false/true 표시·비표시 / 기본·커스텀 메시지 / durationMs 후 자동 onClose(fake timers) / open=false 시 타이머 미발동. (PR #91 리뷰: 타이머 latest-ref 패턴으로 인라인 onClose 재전달 시 리셋 방지 + 회귀 테스트 1건 추가 → 6 tests)
+- **Task #20 — CandidateList 컴포넌트** (Story #7 / F-05, 2026.05.25):
+  - `src/hooks/useCandidates.ts` 신규 — 후보 목록을 노출하는 Business 브릿지 훅(useApiError·useSearchQuery와 동일 패턴). 컴포넌트가 store(Data)를 직접 구독하지 않게 함(3계층 준수, PR #88 교훈).
+  - `src/components/candidate/CandidateList.tsx` 신규 — 후보 목록을 `[썸네일 | 이름 | 삭제버튼]`으로 렌더. 빈 상태 안내, 썸네일/placeholder 분기(`next/image`), 삭제 버튼은 `onDelete(gameId)` prop으로 위임(동작 연결은 #22). 접근성: 삭제 버튼 터치 타겟 **≥44px**(a11y 오버라이드) + `aria-label`에 게임명 포함, `<ul role="list">` 시맨틱.
+  - `src/components/candidate/CandidateList.variants.ts`: tailwind-variants 분리. DESIGN.md neutral 카드 톤 + 삭제 버튼 hover 시 error(red) 톤(destructive 의미).
+  - `tests/unit/components/candidate/CandidateList.test.tsx` 신규 (4 tests) — 빈 상태 / 목록·이름 렌더 / 썸네일·placeholder 분기 / 삭제 버튼 onDelete(id) 위임.
+  - Story #7(후보 등록·중복 방지) 자식 Task #17·#18·#19·#20 **컴포넌트·로직 전부 완료**(F-03 등록·F-04 중복·F-05 표시) → Story #7 통합 준비.
+  - **범위 메모 (PR #93 리뷰):** Story #7 수용기준 중 *"후보 목록에 게임이 추가된 후 검색 드롭다운이 닫힌다"*(issues.md L231)는 컴포넌트 단위가 아니라 **페이지 배선 동작**이다(부모가 `SearchDropdown.isOpen`을 추가 성공 후 닫음). `SearchDropdown`은 `isOpen`을 부모 제어로 두고 있어, 이 닫힘 동작 + onSelect→addToPool→토스트/목록 연결은 **Epic #1 통합(메인 페이지 조립)** 에서 수행한다. 따라서 #17~#20 범위에는 미포함.
 
 ### Deprecated
 - _(없음.)_
