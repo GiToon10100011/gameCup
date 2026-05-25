@@ -555,10 +555,8 @@ flowchart TD
     CheckFinal -->|≥ 2 — 다음 라운드| AdvanceRound[라운드 전진\nTournamentModule.advanceRound\nF-08]
     AdvanceRound --> ShuffleAndPair
 
-    ResultPage --> SaveResult{결과 저장?\nF-19}
-    SaveResult -->|저장| StoreSave[이력 저장\nTournamentStorageModule.saveResult]
+    ResultPage --> StoreSave[이력 자동 저장\nTournamentStorageModule.saveResult\nF-19]
     StoreSave --> ShowShareOption[공유 옵션 표시]
-    SaveResult -->|건너뜀| ShowShareOption
 
     ShowShareOption --> UserShareAction{공유 링크 생성?\nF-20}
     UserShareAction -->|생성| CreateShare[공유 URL 생성\nTournamentStorageModule.createPublicShare]
