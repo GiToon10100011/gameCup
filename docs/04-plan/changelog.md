@@ -116,6 +116,12 @@
   - `src/components/candidate/CandidateList.tsx`: `onDelete` prop을 **선택적**으로 바꾸고 미지정 시 `candidateModule.removeFromPool`로 **기본 연결**. 별도 배선 없이도 삭제 버튼이 동작(Presentation→Business 방향 준수). 페이지가 추가 UX를 끼우려면 `onDelete`를 넘겨 덮어쓴다.
   - `tests/unit/components/candidate/CandidateList.test.tsx` (+1, 총 5): onDelete 미지정 시 삭제 버튼이 실제로 후보를 제거(store 갱신 + 목록 리렌더)하는지 검증. 기존 커스텀 onDelete 테스트는 오버라이드 경로(removeFromPool 미호출)로 명확화.
   - **Story #8(후보 삭제) 자식 Task #21·#22 전부 완료** → Story #8 통합 준비. **Sprint 1의 마지막 컴포넌트 Task 완료** — 이후 Epic #1 통합에서 메인 페이지 조립.
+- **Epic #1 통합 — 메인 페이지 조립** (Story #5·#6·#7·#8 배선, 2026.05.25):
+  - Story #8 통합 PR #96(feat/8 → feat/1) 머지 + 이슈 #8 close + feat/8 정리 → **Epic #1(게임 검색·후보 관리)의 4개 Story 전부 완료**(#5·#6·#7·#8 모두 CLOSED).
+  - `src/app/page.tsx`: placeholder를 걷어내고 전체 사용자 흐름을 조립 — `SearchInput`→`useSearchQuery`→`SearchDropdown`(검색), `addToPool`(등록), `ErrorMessage`(오류, F-11), `CandidateList`(목록·삭제, F-05), `DuplicateToast`(중복, F-04). 페이지는 배선만 담당하고 도메인 로직은 기존 훅·모듈에 위임(3계층 준수). `"use client"`로 전환.
+  - **"추가 후 드롭다운 닫힘" 배선 완료** — Story #7 수용기준 중 페이지 동작이라 #17~#20에서 보류됐던 항목(위 PR #93 범위 메모). 부모가 `isDropdownOpen` state로 `SearchDropdown.isOpen`을 제어, 후보 선택 성공/중복 시 모두 닫음. 드롭다운은 `relative` 섹션 + `absolute top-full` 오버레이로 띄워 후보 목록을 밀어내지 않음.
+  - `tests/unit/app/home-flow.test.tsx` 신규(4): 검색→드롭다운 결과 표시(#5) / 선택→후보 추가 + 드롭다운 닫힘(#7 AC) / 중복 재선택→토스트(F-04) / API 실패→오류 배너(F-11). `fetchGames`만 mock, 실제 타이머+`findBy`/`waitFor`로 디바운스·비동기 쿼리 대기(fake timer×TanStack Query 취약성 회피). 전체 **103 passed / 7 todo**, build `/` 라우트 정상 프리렌더(24.5 kB).
+  - **알려진 갭(후속):** 머지·리뷰된 자식 컴포넌트들은 neutral 라이트/다크 팔레트를 쓰는데, `docs/03-design/DESIGN.md`(getdesign `clickhouse`)는 dark + electric-yellow 토큰이다. 페이지 셸은 DESIGN.md의 **구조 토큰**(4px 간격·타이포 위계·radius)만 따르고 팔레트는 컴포넌트와 일관되게 neutral로 통일 — 전면 디자인 토큰 정렬은 본 통합 범위 밖, 후속 디자인 정렬 Task로 분리한다.
 
 ### Deprecated
 - _(없음.)_
