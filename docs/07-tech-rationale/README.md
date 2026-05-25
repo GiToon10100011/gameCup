@@ -171,6 +171,7 @@
 ## 9. Backend / Database
 
 ### Supabase (BaaS — DB · Auth · Storage)
+
 - **도입 시점:** Iteration 4 / 2026.05.25
 - **분류:** 외부 서비스 (BaaS — DB · Auth · Realtime · Storage)
 - **선택 이유:**
@@ -191,6 +192,7 @@
 - **관련 가이드:** [`../06-setup/supabase-setup.md`](../06-setup/supabase-setup.md) (동시 작성 중)
 
 ### Supabase Auth — 매직 링크(Passwordless)
+
 - **도입 시점:** Iteration 4 / 2026.05.25
 - **분류:** 외부 서비스 (인증)
 - **선택 이유:**

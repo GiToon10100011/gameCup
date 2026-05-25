@@ -57,15 +57,15 @@ GameCup의 아키텍처에서 Supabase는 **Data 계층**에 위치한다. Prese
 
 4. "Create new project" 클릭 → 프로젝트 프로비저닝 완료까지 약 1~2분 대기.
 
-### 4.2 `@supabase/supabase-js` 설치
+### 4.2 `@supabase/supabase-js` · `@supabase/ssr` 설치
 
-Supabase JavaScript 클라이언트 라이브러리를 설치한다. 이 라이브러리가 Auth 세션 관리·DB 쿼리·RLS 정책 적용을 모두 처리한다.
+Supabase JavaScript 클라이언트(`@supabase/supabase-js`, Auth 세션·DB 쿼리·RLS 처리)와, Next.js App Router의 서버/클라이언트 컴포넌트·라우트 핸들러에서 쿠키 기반 세션을 다루기 위한 SSR 헬퍼(`@supabase/ssr`, PKCE 흐름 지원)를 함께 설치한다.
 
 ```bash
-npm install @supabase/supabase-js
+npm install @supabase/supabase-js @supabase/ssr
 ```
 
-설치 후 `package.json` `dependencies`에 `"@supabase/supabase-js": "^2.x.x"`가 추가된 것을 확인한다.
+설치 후 `package.json` `dependencies`에 두 패키지(`"@supabase/supabase-js": "^2.x.x"`, `"@supabase/ssr": "^0.x.x"`)가 추가된 것을 확인한다. (`@supabase/supabase-js` v2는 ESM/CJS 듀얼 번들이라 Next.js 14 App Router에서 별도 설정 없이 import 가능하다.)
 
 > 이 라이브러리는 브라우저 번들과 Node.js 서버 모두에서 동작한다. Next.js 14 App Router 환경에서는 클라이언트 컴포넌트 및 서버 컴포넌트·Route Handler 어디서든 사용 가능하나, GameCup 아키텍처 원칙상 **Presentation 계층이 직접 import해서는 안 된다.** `src/lib/supabaseClient.ts`(Data 계층)에서만 초기화하고 나머지는 Business 모듈(`AuthModule`, `TournamentStorageModule`)을 통해 접근한다.
 
@@ -98,13 +98,13 @@ Supabase Auth는 기본적으로 Email 제공자가 활성화되어 있으며, M
 
 3. **Redirect URLs** 란에 콜백 경로를 추가한다.
 
-   ```
+   ```text
    http://localhost:3000/auth/callback
    ```
 
    Vercel 배포 시 추가:
 
-   ```
+   ```text
    https://<프로젝트명>.vercel.app/auth/callback
    ```
 
@@ -114,7 +114,9 @@ Supabase Auth는 기본적으로 Email 제공자가 활성화되어 있으며, M
 
 #### 4.3.3 왜 `/auth/callback`인가
 
-Supabase 매직 링크는 이메일에 포함된 링크를 클릭하면 Supabase 서버에서 토큰을 검증한 뒤 `Redirect URL`로 `#access_token=...&refresh_token=...` 형태의 URL fragment를 붙여 리다이렉트한다. Next.js App Router에서는 `app/auth/callback/route.ts`에서 이 fragment를 수신해 세션을 완성한다. 이 경로가 없으면 로그인이 완료되지 않는다.
+Next.js App Router에서는 **PKCE 흐름**을 사용한다(`@supabase/ssr` 기반 권장 방식). 매직 링크를 클릭하면 Supabase가 `Redirect URL`로 **`?code=<auth_code>` 쿼리 파라미터**를 붙여 리다이렉트하고, 서버 라우트 핸들러 `app/auth/callback/route.ts`가 이 `code`를 받아 `supabase.auth.exchangeCodeForSession(code)`로 세션 쿠키를 수립한 뒤 앱으로 리다이렉트한다.
+
+> ⚠️ **주의:** 구형 implicit 흐름은 토큰을 URL **fragment**(`#access_token=...`)로 전달하는데, fragment는 브라우저에만 머물고 **서버(route handler)로 전송되지 않는다**. 따라서 App Router의 server route에서 세션을 완성하려면 반드시 PKCE(`?code=`) 흐름이어야 한다. (Supabase 대시보드 기본값이 PKCE이며, `@supabase/ssr`의 `createServerClient`가 이를 처리한다.) 이 경로가 없으면 로그인이 완료되지 않는다.
 
 ### 4.4 DB 스키마 생성
 
@@ -288,7 +290,7 @@ Supabase 클라이언트 초기화에 필요한 두 값을 프로젝트 루트 `
 
 **획득 위치:** Supabase 대시보드 → 좌측 메뉴 **"Project Settings"** → **"API"** 탭
 
-```
+```dotenv
 NEXT_PUBLIC_SUPABASE_URL=https://xxxxxxxxxxxxxxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.xxxxxxxx...
 ```
@@ -338,7 +340,8 @@ node -e "
 ```
 
 기대 출력:
-```
+
+```text
 URL: 설정됨
 KEY: 설정됨
 ```
