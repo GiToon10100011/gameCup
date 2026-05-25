@@ -93,6 +93,28 @@ describe("SearchDropdown (#10)", () => {
     expect(handler).toHaveBeenCalledWith(gameArray[1]);
   });
 
+  it("항목에서 Enter/Space 키 입력 시 onSelect가 호출된다 (키보드 선택 경로)", () => {
+    // listbox/option 패턴은 키보드 사용자도 마우스와 동일하게 선택할 수 있어야 한다(접근성).
+    // <li role="option">이 onKeyDown으로 Enter·Space를 모두 표준 선택 키로 처리하므로 둘 다 검증.
+    const handler = vi.fn();
+    const gameArray = [mkGame("1"), mkGame("2")];
+    render(<SearchDropdown gameArray={gameArray} onSelect={handler} />);
+    const options = screen.getAllByRole("option");
+
+    // Enter — 첫 항목 선택
+    fireEvent.keyDown(options[0], { key: "Enter" });
+    expect(handler).toHaveBeenNthCalledWith(1, gameArray[0]);
+
+    // Space(" ") — 둘째 항목 선택. preventDefault로 스크롤이 발생하지 않아야 하지만
+    // 여기서는 onSelect 위임 자체를 핵심 계약으로 검증한다.
+    fireEvent.keyDown(options[1], { key: " " });
+    expect(handler).toHaveBeenNthCalledWith(2, gameArray[1]);
+
+    // 다른 키(예: 화살표)는 선택을 트리거하지 않아야 함 — 회귀 방지
+    fireEvent.keyDown(options[0], { key: "ArrowDown" });
+    expect(handler).toHaveBeenCalledTimes(2);
+  });
+
   it("thumbnailUrl이 비어있으면 이미지 대신 placeholder가 렌더링된다", () => {
     // 빈 썸네일 — Next.js Image의 빈 src 에러를 피하기 위해 placeholder div로 대체.
     const gameArray = [mkGame("1", { thumbnailUrl: "" })];

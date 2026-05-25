@@ -136,6 +136,11 @@
   - **"추가 후 드롭다운 닫힘" 배선 완료** — Story #7 수용기준 중 페이지 동작이라 #17~#20에서 보류됐던 항목(위 PR #93 범위 메모). 부모가 `isDropdownOpen` state로 `SearchDropdown.isOpen`을 제어, 후보 선택 성공/중복 시 모두 닫음. 드롭다운은 `relative` 섹션 + `absolute top-full` 오버레이로 띄워 후보 목록을 밀어내지 않음.
   - `tests/unit/app/home-flow.test.tsx` 신규(4): 검색→드롭다운 결과 표시(#5) / 선택→후보 추가 + 드롭다운 닫힘(#7 AC) / 중복 재선택→토스트(F-04) / API 실패→오류 배너(F-11). `fetchGames`만 mock, 실제 타이머+`findBy`/`waitFor`로 디바운스·비동기 쿼리 대기(fake timer×TanStack Query 취약성 회피). 전체 **103 passed / 7 todo**, build `/` 라우트 정상 프리렌더(24.5 kB).
   - **알려진 갭(후속):** 머지·리뷰된 자식 컴포넌트들은 neutral 라이트/다크 팔레트를 쓰는데, `docs/03-design/DESIGN.md`(getdesign `clickhouse`)는 dark + electric-yellow 토큰이다. 페이지 셸은 DESIGN.md의 **구조 토큰**(4px 간격·타이포 위계·radius)만 따르고 팔레트는 컴포넌트와 일관되게 neutral로 통일 — 전면 디자인 토큰 정렬은 본 통합 범위 밖, 후속 디자인 정렬 Task로 분리한다.
+- **PR #97 (Epic #1 통합) 리뷰 반영 + dev 머지 충돌 해소** (CodeRabbit 누적 diff 리뷰, 2026.05.25):
+  - **충돌 해소:** `feat/1`에 `dev`를 머지하며 `CLAUDE.md`(§5 컨벤션 표 — variants 분리 행 + UI 디자인 기준 행 **둘 다 유지**)와 `docs/04-plan/changelog.md`(Added 항목 양측 병합) 충돌 해소. 이 머지로 `docs/03-design/DESIGN.md`·coderabbit-notify 워크플로우·linear-cycles 가이드 등 dev 후속 자산이 `feat/1`에 합류.
+  - **키보드 선택 테스트 추가:** `tests/unit/components/search/SearchDropdown.test.tsx` (+1, 총 8) — `<li role="option">`의 Enter/Space 선택 경로 + 비선택 키(ArrowDown) 회귀 검증. 클릭만 있던 커버리지 갭 보강.
+  - **env override 문서 동시 갱신:** `docs/06-setup/rawg-api-key.md` §5에 `NEXT_PUBLIC_RAWG_BASE_URL` 행 추가(선택·override·기본값 명시). `.env.local.example` 키 순서를 dotenv-linter(UnorderedKey) 기준으로 정렬(각 변수 주석 동반).
+  - **기각/후속 분리:** `tailwind-merge@3 / tailwind-variants@3.2.2 vs tailwindcss@3.4.19` 버전 조합 경고 — `tailwind-variants@3.2.2`의 peer는 `tailwindcss: "*"` + `tailwind-merge`(optional `>=3.0.0`)로 **자체적으로 TW3 호환을 선언**하고, 현재 표준 유틸 사용 + build/test 그린이라 실동작 문제 없음. tailwind-merge v3의 TW4 최적화는 잠재 리스크로만 존재하며, deps 다운그레이드는 연쇄 변경 위험이 커 본 통합 범위 밖 — **후속 의존성 정렬 Task**로 분리(스레드에 근거 답변).
 - **머지 후 자동 브랜치 정리 + protected ruleset 작업 흐름 영구화** (사용자 영구 지시 2026.05.20, 이슈 #69):
   - **머지 후 자동 정리:** PR 머지 직후 `github` 에이전트가 head 브랜치를 원격·로컬 모두 삭제(`git push origin --delete` + `git branch -d`). Epic/Story 통합 베이스는 본 통합 PR 머지 시점에만.
   - **protected ruleset 흐름:** main/dev 등 protected 브랜치에 직접 커밋·푸시 금지. 모든 변경(운영/문서 포함)은 ① 이슈 생성 → ② dev에서 브랜치 분기 → ③ 작업·커밋 → ④ PR(base=dev) → ⑤ 머지 절차.
