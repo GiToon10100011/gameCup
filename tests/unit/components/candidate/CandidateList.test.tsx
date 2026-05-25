@@ -67,9 +67,9 @@ describe("CandidateList (#20, F-05)", () => {
   });
 
   // ───────────────────────────────────────────────────────────────────────────
-  // 4) 삭제 버튼 — onDelete(id) 위임
+  // 4) 삭제 버튼 — onDelete(id) 오버라이드
   // ───────────────────────────────────────────────────────────────────────────
-  it("삭제 버튼을 누르면 해당 후보 id로 onDelete를 호출한다", () => {
+  it("커스텀 onDelete를 넘기면 해당 후보 id로 그 핸들러가 호출된다(기본 연결 대신)", () => {
     useStateStore.getState().addCandidate(mkGame("42"));
     const onDelete = vi.fn();
     render(<CandidateList onDelete={onDelete} />);
@@ -78,8 +78,27 @@ describe("CandidateList (#20, F-05)", () => {
     const delBtn = screen.getByRole("button", { name: "후보에서 삭제: Game 42" });
     fireEvent.click(delBtn);
 
-    // 동작 연결(#22) 전이라 store는 그대로지만, 콜백은 정확한 id로 호출되어야 함
+    // 커스텀 onDelete가 정확한 id로 호출되고, 기본 removeFromPool은 안 타므로 store는 그대로
     expect(onDelete).toHaveBeenCalledTimes(1);
     expect(onDelete).toHaveBeenCalledWith("42");
+    expect(useStateStore.getState().getCandidates()).toHaveLength(1);
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 5) 삭제 버튼 — onDelete 미지정 시 기본 연결(removeFromPool) 동작 (#22)
+  // ───────────────────────────────────────────────────────────────────────────
+  it("onDelete 미지정 시 삭제 버튼이 removeFromPool로 실제 후보를 제거한다", () => {
+    useStateStore.getState().addCandidate(mkGame("1"));
+    useStateStore.getState().addCandidate(mkGame("2"));
+
+    // onDelete 없이 렌더 — 기본 연결(candidateModule.removeFromPool) 사용
+    render(<CandidateList />);
+
+    // "Game 1" 삭제 버튼 클릭 → 실제 store에서 제거 → useCandidates 구독으로 목록 리렌더
+    fireEvent.click(screen.getByRole("button", { name: "후보에서 삭제: Game 1" }));
+
+    expect(useStateStore.getState().getCandidates().map((c) => c.id)).toEqual(["2"]);
+    expect(screen.queryByText("Game 1")).toBeNull();
+    expect(screen.getByText("Game 2")).toBeInTheDocument();
   });
 });

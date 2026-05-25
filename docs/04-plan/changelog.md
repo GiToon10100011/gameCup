@@ -109,6 +109,13 @@
   - `tests/unit/components/candidate/CandidateList.test.tsx` 신규 (4 tests) — 빈 상태 / 목록·이름 렌더 / 썸네일·placeholder 분기 / 삭제 버튼 onDelete(id) 위임.
   - Story #7(후보 등록·중복 방지) 자식 Task #17·#18·#19·#20 **컴포넌트·로직 전부 완료**(F-03 등록·F-04 중복·F-05 표시) → Story #7 통합 준비.
   - **범위 메모 (PR #93 리뷰):** Story #7 수용기준 중 *"후보 목록에 게임이 추가된 후 검색 드롭다운이 닫힌다"*(issues.md L231)는 컴포넌트 단위가 아니라 **페이지 배선 동작**이다(부모가 `SearchDropdown.isOpen`을 추가 성공 후 닫음). `SearchDropdown`은 `isOpen`을 부모 제어로 두고 있어, 이 닫힘 동작 + onSelect→addToPool→토스트/목록 연결은 **Epic #1 통합(메인 페이지 조립)** 에서 수행한다. 따라서 #17~#20 범위에는 미포함.
+- **Task #21 — 후보 삭제 액션(candidateModule.removeFromPool) 테스트** (Story #8 / F-05, 2026.05.25):
+  - `tests/unit/candidateModule.test.ts` — `removeFromPool` it.todo를 실테스트로 구현(3): 주어진 id만 제거(F-05) / 없는 id 삭제는 무변화(방어) / 삭제 후 같은 게임 재등록 가능. `canStartTournament`(토너먼트)는 todo 유지.
+  - 삭제 액션 `removeFromPool`(store `removeCandidate` 위임)은 Business 레이어에 이미 존재했고, 본 Task에서 동작 검증을 추가. 삭제 버튼 **동작 연결**(CandidateList onDelete → removeFromPool)은 #22.
+- **Task #22 — 삭제 버튼 동작 연결** (Story #8 / F-05, 2026.05.25):
+  - `src/components/candidate/CandidateList.tsx`: `onDelete` prop을 **선택적**으로 바꾸고 미지정 시 `candidateModule.removeFromPool`로 **기본 연결**. 별도 배선 없이도 삭제 버튼이 동작(Presentation→Business 방향 준수). 페이지가 추가 UX를 끼우려면 `onDelete`를 넘겨 덮어쓴다.
+  - `tests/unit/components/candidate/CandidateList.test.tsx` (+1, 총 5): onDelete 미지정 시 삭제 버튼이 실제로 후보를 제거(store 갱신 + 목록 리렌더)하는지 검증. 기존 커스텀 onDelete 테스트는 오버라이드 경로(removeFromPool 미호출)로 명확화.
+  - **Story #8(후보 삭제) 자식 Task #21·#22 전부 완료** → Story #8 통합 준비. **Sprint 1의 마지막 컴포넌트 Task 완료** — 이후 Epic #1 통합에서 메인 페이지 조립.
 
 ### Deprecated
 - _(없음.)_
