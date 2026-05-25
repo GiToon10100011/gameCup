@@ -23,7 +23,7 @@
 | [`rawg-api-key.md`](./rawg-api-key.md) | RAWG API 키 발급 + `.env.local` 설정 | Iteration 1 / 2026.03.31 | 활성 |
 | [`git-hooks.md`](./git-hooks.md) | Husky + lint-staged 로컬 hook 설정 | Iteration 3 / 2026.05.19 | 활성 |
 | [`github-actions.md`](./github-actions.md) | GitHub Actions CI 워크플로우 (lint·typecheck·test·build·hook 무결성) | Iteration 3 / 2026.05.19 | 활성 |
-| `supabase-setup.md` | Supabase 프로젝트 생성·DB 스키마·환경 변수 | Iteration 4 (예정) | 미작성 |
+| [`supabase-setup.md`](./supabase-setup.md) | Supabase 프로젝트 생성·매직 링크 인증·DB 스키마(tournaments·tournament_results·public_shares)·RLS 정책·환경 변수 | Iteration 4 / 2026.05.25 | 활성 |
 | `sentry-setup.md` | Sentry DSN 발급·Next.js 통합·소스맵 업로드 | Iteration 4 (예정) | 미작성 |
 | `vercel-deploy.md` | Vercel 연동·환경 변수·프리뷰 배포 | Iteration 4 (예정) | 미작성 |
 | `playwright-e2e.md` | Playwright 브라우저 바이너리 설치·로컬 실행 | Phase 4 (테스트 정비) | 미작성 |
