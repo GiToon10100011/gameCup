@@ -55,7 +55,12 @@ export function CandidateList({ onDelete }: ICandidateListProps) {
                 className={thumbCls()}
               />
             ) : (
-              <div className={thumbCls()} aria-hidden="true" />
+              // placeholder는 시각적 보조라 aria-hidden. 테스트가 분기를 직접 검증하도록 testid 부여.
+              <div
+                className={thumbCls()}
+                aria-hidden="true"
+                data-testid="candidate-thumb-placeholder"
+              />
             )}
 
             {/* 게임명 */}

@@ -107,7 +107,8 @@
   - `src/components/candidate/CandidateList.tsx` 신규 — 후보 목록을 `[썸네일 | 이름 | 삭제버튼]`으로 렌더. 빈 상태 안내, 썸네일/placeholder 분기(`next/image`), 삭제 버튼은 `onDelete(gameId)` prop으로 위임(동작 연결은 #22). 접근성: 삭제 버튼 터치 타겟 **≥44px**(a11y 오버라이드) + `aria-label`에 게임명 포함, `<ul role="list">` 시맨틱.
   - `src/components/candidate/CandidateList.variants.ts`: tailwind-variants 분리. DESIGN.md neutral 카드 톤 + 삭제 버튼 hover 시 error(red) 톤(destructive 의미).
   - `tests/unit/components/candidate/CandidateList.test.tsx` 신규 (4 tests) — 빈 상태 / 목록·이름 렌더 / 썸네일·placeholder 분기 / 삭제 버튼 onDelete(id) 위임.
-  - Story #7(후보 등록·중복 방지) 자식 Task #17·#18·#19·#20 **전부 완료** → Story #7 통합 준비.
+  - Story #7(후보 등록·중복 방지) 자식 Task #17·#18·#19·#20 **컴포넌트·로직 전부 완료**(F-03 등록·F-04 중복·F-05 표시) → Story #7 통합 준비.
+  - **범위 메모 (PR #93 리뷰):** Story #7 수용기준 중 *"후보 목록에 게임이 추가된 후 검색 드롭다운이 닫힌다"*(issues.md L231)는 컴포넌트 단위가 아니라 **페이지 배선 동작**이다(부모가 `SearchDropdown.isOpen`을 추가 성공 후 닫음). `SearchDropdown`은 `isOpen`을 부모 제어로 두고 있어, 이 닫힘 동작 + onSelect→addToPool→토스트/목록 연결은 **Epic #1 통합(메인 페이지 조립)** 에서 수행한다. 따라서 #17~#20 범위에는 미포함.
 
 ### Deprecated
 - _(없음.)_

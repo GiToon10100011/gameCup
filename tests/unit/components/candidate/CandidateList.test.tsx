@@ -55,12 +55,15 @@ describe("CandidateList (#20, F-05)", () => {
   // 3) 썸네일 / placeholder 분기
   // ───────────────────────────────────────────────────────────────────────────
   it("thumbnailUrl이 있으면 img, 없으면 placeholder로 렌더한다", () => {
-    // 1개는 썸네일 있음, 1개는 없음 → img는 정확히 1개여야 함
+    // 1개는 썸네일 있음, 1개는 없음 → img 1개 + placeholder 1개로 두 분기 모두 검증
     useStateStore.getState().addCandidate(mkGame("1", "https://media.rawg.io/x.jpg"));
     useStateStore.getState().addCandidate(mkGame("2"));
     const { container } = render(<CandidateList onDelete={() => {}} />);
 
+    // image 분기: img 정확히 1개
     expect(container.querySelectorAll("img")).toHaveLength(1);
+    // placeholder 분기: 직접 존재 검증 (img 개수만으로는 placeholder 누락을 못 잡음)
+    expect(screen.getAllByTestId("candidate-thumb-placeholder")).toHaveLength(1);
   });
 
   // ───────────────────────────────────────────────────────────────────────────
