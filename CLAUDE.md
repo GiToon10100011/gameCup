@@ -23,7 +23,7 @@
 
 ## 2. 작업 위임 규칙 (Subagent Roster)
 
-본 프로젝트는 **9개의 분야별 서브에이전트**를 정의한다(프로젝트 로컬, `.claude/agents/`). 추가로 사용자 레벨(`~/.claude/agents/`)에 **`project-bootstrap`** 글로벌 에이전트가 있어 모든 신규 프로젝트의 최초 초기화를 담당한다. 사용자 요청을 받으면 트리거 키워드와 작업 성격을 매칭해 해당 에이전트에 위임한다.
+본 프로젝트는 **10개의 분야별 서브에이전트**를 정의한다(프로젝트 로컬, `.claude/agents/`). 추가로 사용자 레벨(`~/.claude/agents/`)에 **`project-bootstrap`** 글로벌 에이전트가 있어 모든 신규 프로젝트의 최초 초기화를 담당한다. 사용자 요청을 받으면 트리거 키워드와 작업 성격을 매칭해 해당 에이전트에 위임한다.
 
 | 에이전트 | 분야 | 트리거 예시 | 산출물 위치 |
 | --- | --- | --- | --- |
@@ -36,6 +36,7 @@
 | `code` | 코드 구현 | "F-XX 구현", "모듈 채우기", "리팩토링" | `src/**`, `tests/**` |
 | `github` | Git/GitHub 운영 | "커밋", "PR 생성", "푸시", "git init" | (Git 메타데이터·PR) |
 | `issue-branch` | 이슈·브랜치 운영 | "Sprint N 브랜치 분기", "이슈 목록", "이슈-브랜치 매핑" | GitHub Issues/Branches |
+| `supabase` | Supabase 설정 (CLI 기반) | "스키마 변경", "마이그레이션 추가", "RLS 정책", "supabase 타입 생성" | `supabase/migrations/*.sql`, `supabase/config.toml`, `src/types/supabase.ts` |
 | `project-bootstrap` 🌐 | 신규 프로젝트 부트스트랩 (글로벌, `~/.claude/agents/`) | "프로젝트 초기화", "PRD 분해해서 이슈 등록", "신규 저장소 부트스트랩" | GitHub Issues + 새 프로젝트의 `docs/` 트리·`CLAUDE.md`·`.claude/agents/` |
 | `docs-builder` 🌐 | PRD/아이디어 기반 문서 확장 (글로벌) | "문서 추천", "API 명세 만들어줘", "용어집·ADR·테스트 계획·페르소나·DB 스키마 작성" | `docs/` 트리 내 추가 산출 (PRD/UML/UC 외 모든 문서) |
 
@@ -53,7 +54,8 @@
   ├─ "UML"/"클래스/시퀀스/액티비티" → docs-uml
   ├─ "UC"/"유즈케이스" → docs-usecase
   ├─ "changelog"/"이력" → docs-changelog
-  ├─ "설치 가이드"/"환경 설정"/"GCP/DB/Supabase 설정" → docs-setup
+  ├─ "Supabase 스키마/RLS/마이그레이션/타입 생성"/"테이블 추가" → supabase (CLI 기반 — npx supabase)
+  ├─ "설치 가이드"/"환경 설정 문서"/"Sentry/Vercel 도입 절차" → docs-setup (문서 작성)
   ├─ "기술 선택 이유"/"라이브러리 근거" → docs-tech-rationale
   └─ 그 외 → 분류 곤란 시 사용자에게 명확화 요청
 ```

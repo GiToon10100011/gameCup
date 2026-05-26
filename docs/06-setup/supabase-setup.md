@@ -297,6 +297,35 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.xxxxxxxx...
 
 > `.env.local`은 `.gitignore`에 등록되어 커밋되지 않는다. **절대 실제 값을 코드에 하드코딩하거나 공개 저장소에 커밋하지 말 것.**
 
+### 4.7 CLI 기반 마이그레이션 워크플로 (이후 스키마 변경)
+
+위 §4.4~§4.5의 초기 스키마는 대시보드 SQL Editor로 **최초 1회** 적용했다. **이후 모든 스키마·RLS 변경은 대시보드가 아니라 Supabase CLI + 마이그레이션 파일로 버전 관리**한다(사용자 영구 지시 2026.05.26). 작업은 `supabase` 에이전트가 담당한다.
+
+- CLI는 프로젝트 **devDependency**로 설치돼 있어 `npx supabase ...`로 실행한다(전역 설치 가정 금지).
+- 로컬 스캐폴드: `supabase/`(`config.toml` + `migrations/`)는 `npx supabase init`로 생성됨. 초기 스키마는 [`../../supabase/migrations/20260526000000_initial_schema.sql`](../../supabase/migrations/20260526000000_initial_schema.sql)로 캡처돼 있다.
+- **인증·TTY 필요 명령은 사용자가 `!` 프리픽스로 본인 세션에서 실행**(자동화 셸엔 전역 CLI가 없을 수 있음):
+
+```bash
+# 1) 로그인 (최초 1회) — 브라우저 인증
+npx supabase login
+
+# 2) 원격 프로젝트 링크 (최초 1회) — Project Settings > General의 Reference ID
+npx supabase link --project-ref <project-ref>
+
+# 3) 초기 스키마는 이미 대시보드로 적용됨 → 중복 실행 방지로 "적용됨" 표시
+npx supabase migration repair --status applied 20260526000000
+
+# 4) 이후 새 변경: 마이그레이션 작성(supabase 에이전트) → 원격 반영
+npx supabase migration new <변경명>     # 골격 생성
+#   supabase/migrations/<ts>_<변경명>.sql 에 SQL 작성
+npx supabase db push                     # 원격 반영(파괴적 가능 — 내용 확인 후)
+
+# 5) (선택) DB 스키마로부터 TS 타입 생성
+npx supabase gen types typescript --linked > src/types/supabase.ts
+```
+
+> 새 테이블은 **반드시 `enable row level security` + 정책을 같은 마이그레이션에 포함**한다(NF-06). `db push`는 원격 DB를 변경하므로 적용 전 마이그레이션 내용을 검토한다.
+
 ---
 
 ## 5. 환경 변수
