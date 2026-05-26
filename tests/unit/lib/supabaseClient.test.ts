@@ -275,6 +275,47 @@ describe("supabaseClient 팩토리 (이슈 #104)", () => {
       expect(mockCookieStore.set).toHaveBeenNthCalledWith(2, "sb-refresh", "xyz", {});
     });
 
+    it("setAll은 cookieStore.set이 예외를 던져도(서버 컴포넌트 read-only) 삼키고 throw하지 않는다", async () => {
+      // WHY: 서버 컴포넌트는 read-only 쿠키 컨텍스트라 set() 호출 시 예외가 발생할 수 있다.
+      // 이때 setAll은 예외를 의도적으로 무시해야 한다(세션 갱신은 미들웨어/라우트 핸들러가 담당).
+      vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://test.supabase.co");
+      vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "test-anon-key-server");
+
+      vi.resetModules();
+      vi.mock("@supabase/ssr", () => ({
+        createBrowserClient: createBrowserClientMock,
+        createServerClient: createServerClientMock,
+      }));
+      vi.mock("next/headers", () => ({
+        cookies: vi.fn().mockResolvedValue(mockCookieStore),
+      }));
+
+      const { createServerSupabaseClient } = await import(
+        "@/lib/supabaseClient"
+      );
+      await createServerSupabaseClient();
+
+      const thirdArg = createServerClientMock.mock.calls[0][2] as {
+        cookies: {
+          setAll: (
+            cookies: { name: string; value: string; options: object }[],
+          ) => void;
+        };
+      };
+
+      // 서버 컴포넌트 read-only 컨텍스트 재현 — set이 예외를 던지도록 1회 스텁
+      mockCookieStore.set.mockImplementationOnce(() => {
+        throw new Error("Cookies can only be modified in a Server Action or Route Handler");
+      });
+
+      // setAll 내부 try/catch가 예외를 삼켜 호출자에게 전파하지 않아야 한다
+      expect(() =>
+        thirdArg.cookies.setAll([
+          { name: "sb-token", value: "abc", options: {} },
+        ]),
+      ).not.toThrow();
+    });
+
     it("env 누락 시 명확한 에러를 throw한다", async () => {
       // URL과 Key 모두 미설정
       vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "");

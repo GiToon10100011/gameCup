@@ -71,8 +71,9 @@ export function createBrowserSupabaseClient(): SupabaseClient {
 export async function createServerSupabaseClient(): Promise<SupabaseClient> {
   const { url, anonKey } = getSupabaseEnv();
 
-  // next/headers cookies()는 Next.js 14에서 Promise를 반환하므로 await 필요.
-  // 각 요청의 쿠키 저장소에 대한 참조를 얻는다.
+  // Next.js 14.2의 cookies()는 동기적으로 ReadonlyRequestCookies를 반환한다(Promise 아님).
+  // 그럼에도 await를 두는 이유: Next 15부터 cookies()가 Promise를 반환하도록 바뀌므로,
+  // await로 감싸 두면 동기(14)·비동기(15) 양쪽에서 동일하게 동작한다(동기 값의 await는 무해).
   const cookieStore = await cookies();
 
   return createServerClient(url, anonKey, {
