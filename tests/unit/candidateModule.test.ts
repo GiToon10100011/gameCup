@@ -1,8 +1,9 @@
 // 후보 등록·삭제·시작 조건 검증 모듈의 단위 테스트.
-// addToPool(등록, #18)·removeFromPool(삭제, #21)을 구현. canStartTournament(토너먼트)는 todo 유지.
+// addToPool(등록, #18)·removeFromPool(삭제, #21)·canStartTournament(시작 가드, F-06) 모두 구현.
+// Issue #75 — canStartTournament it.todo 해소.
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { addToPool, removeFromPool } from "@/modules/candidateModule";
+import { addToPool, canStartTournament, removeFromPool } from "@/modules/candidateModule";
 import { useStateStore } from "@/store/stateStore";
 import type { IGame } from "@/types/game";
 
@@ -81,6 +82,24 @@ describe("candidateModule (UT-10)", () => {
     });
   });
 
-  // 토너먼트 시작 조건 — 후보 ≥ 2 (F-06 시작 가드, 토너먼트 Task에서 구현)
-  it.todo("canStartTournament는 후보가 2개 이상일 때만 true를 반환한다");
+  // ───────────────────────────────────────────────────────────────────────────
+  // canStartTournament — 토너먼트 시작 가드 (F-06)
+  // UI의 '시작' 버튼 활성화 조건을 이 함수가 결정하므로, 경계값(0·1·2)을 모두 검증한다
+  // ───────────────────────────────────────────────────────────────────────────
+  it("canStartTournament는 후보가 2개 이상일 때만 true를 반환한다 (F-06)", () => {
+    // 후보 0개 → false (토너먼트 시작 불가)
+    expect(canStartTournament()).toBe(false);
+
+    // 후보 1개 → false (최소 2개가 있어야 대결 성립)
+    addToPool(mkGame("solo"));
+    expect(canStartTournament()).toBe(false);
+
+    // 후보 2개 → true (경계값: 정확히 2개부터 허용)
+    addToPool(mkGame("duo"));
+    expect(canStartTournament()).toBe(true);
+
+    // 후보 3개 이상에서도 여전히 true여야 한다
+    addToPool(mkGame("trio"));
+    expect(canStartTournament()).toBe(true);
+  });
 });
