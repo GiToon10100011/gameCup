@@ -28,3 +28,14 @@ export interface IApiError {
   message: string;
   statusCode: number;
 }
+
+// Supabase Auth 인증 사용자를 표현하는 최소 단위.
+// Supabase Session의 User 객체에서 필요한 필드만 추출해 정규화한다.
+// Presentation 계층(AuthModule)과 Business 계층 간 전달 단위로 사용되며,
+// Supabase SDK 타입에 직접 의존하지 않도록 별도로 정의한다 (UML v2.0 §IUser).
+export interface IUser {
+  // Supabase가 발급하는 UUID 형식의 사용자 식별자
+  id: string;
+  // 매직 링크 인증에 사용한 이메일 주소
+  email: string;
+}
