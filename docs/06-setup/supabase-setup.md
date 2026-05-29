@@ -189,8 +189,8 @@ create table public_shares (
   created_at     timestamptz not null default now()
 );
 
--- share_id(공개 URL 토큰)로 빠른 단건 조회를 위한 인덱스
-create index idx_public_shares_share_id on public_shares(share_id);
+-- share_id는 UNIQUE 제약이 인덱스를 자동 생성하므로 별도 인덱스를 만들지 않는다
+-- (단건 조회 최적화는 UNIQUE 인덱스로 이미 충족 — 중복 인덱스 회피)
 ```
 
 | 컬럼 | 타입 | 설명 |
@@ -275,11 +275,23 @@ create policy "public_shares: 누구나 share_id로 조회"
   on public_shares for select
   using (true);
 
--- 인증 사용자만 공유 레코드 생성 가능
--- (result_id가 본인 소유인지는 애플리케이션 계층에서 검증 — TournamentStorageModule)
-create policy "public_shares: 인증 사용자만 생성"
+-- 인증 사용자가 '본인 소유' 결과·토너먼트에 대해서만 공유 레코드 생성 가능
+-- (RLS 심층 방어 — NF-06. result_id·tournament_id의 소유권과 조합 일관성을 단일 JOIN 서브쿼리로 검증:
+--   r.tournament_id = tournament_id 조건으로 결과가 해당 토너먼트에 실제로 속하는지까지 보장한다)
+create policy "public_shares: 본인 결과만 공유 생성"
   on public_shares for insert
-  with check (auth.uid() is not null);
+  with check (
+    auth.uid() is not null
+    and exists (
+      select 1
+      from tournament_results r
+      join tournaments t on t.id = r.tournament_id
+      where r.id = result_id
+        and r.tournament_id = tournament_id
+        and r.owner_id = auth.uid()
+        and t.owner_id = auth.uid()
+    )
+  );
 ```
 
 > `public_shares`의 SELECT 정책이 `using (true)`인 이유: 비로그인 방문자가 공유 URL(`/share/<share_id>`)에 접근할 때 Supabase 세션이 없다. 이때도 결과를 읽을 수 있어야 하므로 전체 공개를 허용한다. `share_id` 자체가 예측 불가한 32자 hex 토큰이므로, URL을 모르면 임의로 접근할 수 없다.
@@ -296,6 +308,35 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.xxxxxxxx...
 ```
 
 > `.env.local`은 `.gitignore`에 등록되어 커밋되지 않는다. **절대 실제 값을 코드에 하드코딩하거나 공개 저장소에 커밋하지 말 것.**
+
+### 4.7 CLI 기반 마이그레이션 워크플로 (이후 스키마 변경)
+
+위 §4.4~§4.5의 초기 스키마는 대시보드 SQL Editor로 **최초 1회** 적용했다. **이후 모든 스키마·RLS 변경은 대시보드가 아니라 Supabase CLI + 마이그레이션 파일로 버전 관리**한다(사용자 영구 지시 2026.05.26). 작업은 `supabase` 에이전트가 담당한다.
+
+- CLI는 프로젝트 **devDependency**로 설치돼 있어 `npx supabase ...`로 실행한다(전역 설치 가정 금지).
+- 로컬 스캐폴드: `supabase/`(`config.toml` + `migrations/`)는 `npx supabase init`로 생성됨. 초기 스키마는 [`../../supabase/migrations/20260526000000_initial_schema.sql`](../../supabase/migrations/20260526000000_initial_schema.sql)로 캡처돼 있다.
+- **인증·TTY 필요 명령은 사용자가 `!` 프리픽스로 본인 세션에서 실행**(자동화 셸엔 전역 CLI가 없을 수 있음):
+
+```bash
+# 1) 로그인 (최초 1회) — 브라우저 인증
+npx supabase login
+
+# 2) 원격 프로젝트 링크 (최초 1회) — Project Settings > General의 Reference ID
+npx supabase link --project-ref <project-ref>
+
+# 3) 초기 스키마는 이미 대시보드로 적용됨 → 중복 실행 방지로 "적용됨" 표시
+npx supabase migration repair --status applied 20260526000000
+
+# 4) 이후 새 변경: 마이그레이션 작성(supabase 에이전트) → 원격 반영
+npx supabase migration new <변경명>     # 골격 생성
+#   supabase/migrations/<ts>_<변경명>.sql 에 SQL 작성
+npx supabase db push                     # 원격 반영(파괴적 가능 — 내용 확인 후)
+
+# 5) (선택) DB 스키마로부터 TS 타입 생성
+npx supabase gen types typescript --linked > src/types/supabase.ts
+```
+
+> 새 테이블은 **반드시 `enable row level security` + 정책을 같은 마이그레이션에 포함**한다(NF-06). `db push`는 원격 DB를 변경하므로 적용 전 마이그레이션 내용을 검토한다.
 
 ---
 

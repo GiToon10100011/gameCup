@@ -40,6 +40,11 @@
   - 설정 가이드 [`../06-setup/github-actions-coderabbit-notify.md`](../06-setup/github-actions-coderabbit-notify.md) (8개 표준 섹션) + `docs/06-setup/README.md` 인덱스 갱신
   - ⚠️ **활성화 조건:** 이 이벤트 워크플로들은 default 브랜치(`main`)의 정의로만 실행 → main 도달 후 발동 (가이드 §7)
 - **이슈 #75 — 미구현 단위 테스트 7건 실구현** (2026.05.26): `it.todo`로 남아 있던 테스트를 실제 단언으로 전환 — `tournamentModule.test.ts` 5건(UT-06 selectWinner / UT-07·08 advanceRound / startTournament 가드 F-06 / 부전승 F-09), `candidateModule.test.ts` 1건(canStartTournament F-06), `useDebounce.test.ts` 1건(fake timer 기반 연속 입력 마지막 값). 전체 **114 passed / 0 todo**. (PR #74 리뷰 후속, #28·#29 셔플/페어 유틸은 스캐폴딩 완료 확인 후 close.)
+- **이슈 #134 — Supabase CLI(devDep) 도입 + 전용 `supabase` 에이전트** (사용자 지시 2026.05.26): 앞으로 Supabase 설정은 CLI로 수행.
+  - `supabase`를 **devDependency**로 추가(`npx supabase` 실행, 자동화 셸 PATH 문제 회피 + 버전 고정). `npx supabase init`로 `supabase/`(config.toml·migrations·.gitignore) 스캐폴드.
+  - **초기 스키마를 마이그레이션으로 캡처**: `supabase/migrations/20260526000000_initial_schema.sql`(3테이블 + 인덱스 + RLS). 대시보드 수동 적용분을 코드로 버전관리(원격엔 적용됨 → `migration repair --status applied`로 중복 방지).
+  - **전용 `supabase` 에이전트** 신설(`.claude/agents/supabase.md`) — 마이그레이션 작성·RLS·타입 생성·CLI 명령 준비 담당. login/link/db push 등 인증·TTY 명령은 사용자 `!` 실행. `CLAUDE.md` §2 로스터(9→**10개**)·결정 트리에 추가, `supabase-setup.md` §4.7 CLI 워크플로 섹션 추가.
+  - 사용자 메모리 `feedback_supabase_cli_first.md` 신설.
 
 ### Changed
 - **인터페이스 `I` 접두사 + 블록 주석 컨벤션 영구 적용** (사용자 영구 원칙, PR #63 리뷰 + 2026.05.20): TypeScript `interface`는 항상 `I` 접두사(예: `ISearchInputProps`), `type`/컴포넌트는 영향 없음. 새 코드 블록(함수·effect·분기·jsx·테스트)마다 한국어 주석 필수(교육·포트폴리오 목적, 보안 우려 없음). `CLAUDE.md` §5·`.claude/agents/code.md`·글로벌 `project-bootstrap`·사용자 메모리(`feedback_interface_i_prefix.md`, `feedback_block_comments_required.md`)에 명문화.
