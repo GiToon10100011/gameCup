@@ -45,7 +45,7 @@ function getSupabaseEnv(): { url: string; anonKey: string } {
 // 쿠키 접근이 실패하므로 팩토리를 분리하여 용도를 명확히 구분한다.
 /**
  * 클라이언트 컴포넌트용 Supabase 클라이언트를 생성해 반환한다.
- * 매직 링크 인증·세션 갱신 구독(onAuthStateChange) 등 브라우저 전용 Auth 흐름에 사용.
+ * OTP 인증·세션 갱신 구독(onAuthStateChange) 등 브라우저 전용 Auth 흐름에 사용.
  */
 export function createBrowserSupabaseClient(): SupabaseClient {
   const { url, anonKey } = getSupabaseEnv();
@@ -56,8 +56,8 @@ export function createBrowserSupabaseClient(): SupabaseClient {
 // ─────────────────────────────────────────────────────────────────────────────
 // 서버(라우트 핸들러·서버 컴포넌트)용 팩토리
 // ─────────────────────────────────────────────────────────────────────────────
-// WHY: App Router에서 PKCE 흐름(매직 링크 콜백)은 서버 라우트 핸들러가
-// ?code= 파라미터를 받아 exchangeCodeForSession()을 호출하고 세션 쿠키를 수립한다.
+// WHY: App Router에서 인증 콜백 처리는 서버 라우트 핸들러가
+// 인증 파라미터를 받아 세션 쿠키를 수립한다.
 // 이때 서버가 쿠키를 읽고 쓸 수 있어야 하므로 Next.js `next/headers`의 cookies()를
 // 어댑터로 연결한다. getAll/setAll 패턴을 사용하는 이유: @supabase/ssr 권장 방식이며,
 // 구형 get/set/remove는 deprecated + edge case 미처리 문제가 있다.
