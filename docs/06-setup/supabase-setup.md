@@ -276,14 +276,21 @@ create policy "public_shares: 누구나 share_id로 조회"
   using (true);
 
 -- 인증 사용자가 '본인 소유' 결과·토너먼트에 대해서만 공유 레코드 생성 가능
--- (RLS 심층 방어 — NF-06. auth.uid() is not null만 검사하면 타인 결과로도 공유 링크를
---  만들 수 있어, EXISTS로 result_id·tournament_id의 owner_id가 본인인지 DB 수준에서 검증)
+-- (RLS 심층 방어 — NF-06. result_id·tournament_id의 소유권과 조합 일관성을 단일 JOIN 서브쿼리로 검증:
+--   r.tournament_id = tournament_id 조건으로 결과가 해당 토너먼트에 실제로 속하는지까지 보장한다)
 create policy "public_shares: 본인 결과만 공유 생성"
   on public_shares for insert
   with check (
     auth.uid() is not null
-    and exists (select 1 from tournament_results r where r.id = result_id and r.owner_id = auth.uid())
-    and exists (select 1 from tournaments t where t.id = tournament_id and t.owner_id = auth.uid())
+    and exists (
+      select 1
+      from tournament_results r
+      join tournaments t on t.id = r.tournament_id
+      where r.id = result_id
+        and r.tournament_id = tournament_id
+        and r.owner_id = auth.uid()
+        and t.owner_id = auth.uid()
+    )
   );
 ```
 
