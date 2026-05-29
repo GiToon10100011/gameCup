@@ -10,10 +10,10 @@
 -- 본 보정 마이그레이션을 append하고 `npx supabase db push`로 원격에 반영한다(append-only 원칙).
 
 -- 1) 약한 INSERT 정책 제거 후 소유권 + 조합 일관성 검증 정책으로 교체
-drop policy if exists "public_shares: 인증 사용자만 생성" on public_shares;
-drop policy if exists "public_shares: 본인 결과만 공유 생성" on public_shares;
+drop policy if exists "public_shares: 인증 사용자만 생성" on public_shares; -- noqa: RF05
+drop policy if exists "public_shares: 본인 결과만 공유 생성" on public_shares; -- noqa: RF05
 
-create policy "public_shares: 본인 결과만 공유 생성"
+create policy "public_shares: 본인 결과만 공유 생성" -- noqa: RF05
   on public_shares for insert
   with check (
     auth.uid() is not null
