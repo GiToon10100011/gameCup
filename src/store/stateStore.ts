@@ -59,8 +59,9 @@ interface IStateStoreActions {
 
 // 초기 상태 — `resetAll`에서도 동일 객체를 spread해서 깔끔하게 초기화한다.
 // 단, `searchCache`만은 새 Map 인스턴스를 만들어줘야 이전 캐시가 새지 않는다.
-// ※ `currentUser`는 여기에 포함하지 않는다 — resetAll(새 토너먼트)로 로그인 세션이
-//   날아가면 안 되기 때문. AuthSlice의 currentUser는 별도로 관리한다.
+// ※ `currentUser`는 앱 최초 로드 시 null로 초기화되지만, `resetAll`(새 토너먼트 시작)에서는
+//   initialState의 currentUser: null을 그대로 적용하지 않고 기존 세션값을 덮어써 유지한다.
+//   즉 initialState를 spread 후 `currentUser: state.currentUser`로 복원하는 방식이다(아래 resetAll 참고).
 const initialState: IStateStoreState = {
   searchCache: new Map(),
   candidates: [],
