@@ -189,8 +189,8 @@ create table public_shares (
   created_at     timestamptz not null default now()
 );
 
--- share_id(공개 URL 토큰)로 빠른 단건 조회를 위한 인덱스
-create index idx_public_shares_share_id on public_shares(share_id);
+-- share_id는 UNIQUE 제약이 인덱스를 자동 생성하므로 별도 인덱스를 만들지 않는다
+-- (단건 조회 최적화는 UNIQUE 인덱스로 이미 충족 — 중복 인덱스 회피)
 ```
 
 | 컬럼 | 타입 | 설명 |
@@ -275,11 +275,16 @@ create policy "public_shares: 누구나 share_id로 조회"
   on public_shares for select
   using (true);
 
--- 인증 사용자만 공유 레코드 생성 가능
--- (result_id가 본인 소유인지는 애플리케이션 계층에서 검증 — TournamentStorageModule)
-create policy "public_shares: 인증 사용자만 생성"
+-- 인증 사용자가 '본인 소유' 결과·토너먼트에 대해서만 공유 레코드 생성 가능
+-- (RLS 심층 방어 — NF-06. auth.uid() is not null만 검사하면 타인 결과로도 공유 링크를
+--  만들 수 있어, EXISTS로 result_id·tournament_id의 owner_id가 본인인지 DB 수준에서 검증)
+create policy "public_shares: 본인 결과만 공유 생성"
   on public_shares for insert
-  with check (auth.uid() is not null);
+  with check (
+    auth.uid() is not null
+    and exists (select 1 from tournament_results r where r.id = result_id and r.owner_id = auth.uid())
+    and exists (select 1 from tournaments t where t.id = tournament_id and t.owner_id = auth.uid())
+  );
 ```
 
 > `public_shares`의 SELECT 정책이 `using (true)`인 이유: 비로그인 방문자가 공유 URL(`/share/<share_id>`)에 접근할 때 Supabase 세션이 없다. 이때도 결과를 읽을 수 있어야 하므로 전체 공개를 허용한다. `share_id` 자체가 예측 불가한 32자 hex 토큰이므로, URL을 모르면 임의로 접근할 수 없다.
