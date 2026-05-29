@@ -213,6 +213,17 @@ describe("authModule (Task #108 — OTP 이메일 인증)", () => {
 
       expect(result).toBeNull();
     });
+
+    // 에러 경로: 네트워크 오류 등으로 세션 조회 자체가 실패하면 throw해야 한다
+    // WHY: error를 null 세션으로 오인하면 일시적 오류를 로그아웃으로 잘못 처리할 수 있다
+    it("세션 조회 API 에러 시 Error를 throw한다", async () => {
+      mockGetSession.mockResolvedValue({
+        data: { session: null },
+        error: { message: "Network error" },
+      });
+
+      await expect(authModule.getSession()).rejects.toThrow("Network error");
+    });
   });
 
   // ─── signOut ────────────────────────────────────────────────────────────
@@ -237,6 +248,67 @@ describe("authModule (Task #108 — OTP 이메일 인증)", () => {
 
       // StateStore의 currentUser가 null로 비워졌는지 확인 (로그아웃 완료)
       expect(useStateStore.getState().getUser()).toBeNull();
+    });
+
+    // 에러 경로: signOut API 실패 시 throw하고 clearUser는 호출하지 않는다
+    // WHY: 서버 세션이 살아있는 상태에서 로컬만 지우면 Supabase 세션과 불일치가 발생한다
+    it("signOut API 에러 시 Error를 throw하고 clearUser는 호출되지 않는다", async () => {
+      useStateStore
+        .getState()
+        .setUser({ id: "user-to-keep", email: "keep@example.com" });
+
+      mockSignOut.mockResolvedValue({ error: { message: "Sign out failed" } });
+
+      await expect(authModule.signOut()).rejects.toThrow("Sign out failed");
+
+      // 에러 시 StateStore가 변경되지 않아야 한다 (서버 세션과 일관성 유지)
+      expect(useStateStore.getState().getUser()).toEqual({
+        id: "user-to-keep",
+        email: "keep@example.com",
+      });
+    });
+  });
+
+  // ─── onAuthStateChange ──────────────────────────────────────────────────
+
+  describe("onAuthStateChange", () => {
+    // 세션 변경 이벤트가 발생하면 콜백에 IUser가 전달된다
+    it("세션이 있을 때 콜백에 IUser가 전달된다", () => {
+      const fakeUser = { id: "auth-change-user", email: "change@example.com" };
+      // mockOnAuthStateChange가 즉시 콜백을 호출하도록 설정한다
+      mockOnAuthStateChange.mockImplementation(
+        (cb: (event: string, session: { user: typeof fakeUser } | null) => void) => {
+          cb("SIGNED_IN", { user: fakeUser });
+          return { data: { subscription: { unsubscribe: vi.fn() } } };
+        },
+      );
+
+      const capturedUsers: (typeof fakeUser | null)[] = [];
+      authModule.onAuthStateChange((user) => capturedUsers.push(user));
+
+      // 콜백이 호출됐고 IUser 형태로 전달됐는지 확인
+      expect(capturedUsers).toHaveLength(1);
+      expect(capturedUsers[0]).toEqual({
+        id: "auth-change-user",
+        email: "change@example.com",
+      });
+    });
+
+    // 구독 해제 함수를 반환해야 한다 (메모리 누수 방지)
+    it("구독 해제 함수를 반환하고 unsubscribe가 호출된다", () => {
+      const mockUnsubscribe = vi.fn();
+      mockOnAuthStateChange.mockReturnValue({
+        data: { subscription: { unsubscribe: mockUnsubscribe } },
+      });
+
+      const cleanup = authModule.onAuthStateChange(() => {});
+
+      // 반환값이 함수인지 확인
+      expect(typeof cleanup).toBe("function");
+
+      // cleanup 호출 시 unsubscribe가 실행돼야 한다
+      cleanup();
+      expect(mockUnsubscribe).toHaveBeenCalledTimes(1);
     });
   });
 });

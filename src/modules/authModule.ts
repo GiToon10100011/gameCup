@@ -98,7 +98,14 @@ async function getSession(): Promise<IUser | null> {
 
   const {
     data: { session },
+    error,
   } = await supabase.auth.getSession();
+
+  // 세션 조회 자체가 실패한 경우(네트워크 오류 등)는 null 세션과 구분해 즉시 throw
+  // WHY: error를 무시하면 일시적 네트워크 오류를 "비로그인"으로 오인해 사용자가 로그아웃될 수 있다
+  if (error) {
+    throw new Error(error.message);
+  }
 
   // 세션이 없으면 비인증 상태 — null 반환
   if (!session?.user) {
@@ -116,7 +123,14 @@ async function getSession(): Promise<IUser | null> {
 async function signOut(): Promise<void> {
   const supabase = createBrowserSupabaseClient();
 
-  await supabase.auth.signOut();
+  const { error } = await supabase.auth.signOut();
+
+  // 로그아웃 API 실패 시 즉시 throw — 실패했는데 로컬 상태만 지우면 Supabase 세션과 불일치 발생
+  // WHY: 서버 세션이 살아있는 상태에서 clearUser만 호출하면 다음 요청에서 세션이 다시 복원되어
+  //      로그아웃이 된 것처럼 보이지만 실제로는 인증 요청이 통과하는 보안 문제가 생긴다.
+  if (error) {
+    throw new Error(error.message);
+  }
 
   // StateStore에서 사용자 정보를 제거해 로그아웃 상태를 앱 전체에 반영한다
   useStateStore.getState().clearUser();
@@ -128,14 +142,21 @@ async function signOut(): Promise<void> {
 // WHY: 탭 전환·토큰 만료·다른 기기에서의 로그아웃 등 외부 이벤트로 세션이 변경될 때
 // 앱이 즉각적으로 반응하려면 Supabase의 onAuthStateChange를 구독해야 한다.
 // callback은 IUser | null을 받아 Presentation(예: AuthProvider)이 상태를 동기화한다.
-function onAuthStateChange(callback: (user: IUser | null) => void): void {
+// 반환값: 구독 해제 함수 — 컴포넌트 unmount 시 useEffect cleanup으로 호출해 메모리 누수를 막는다.
+function onAuthStateChange(callback: (user: IUser | null) => void): () => void {
   const supabase = createBrowserSupabaseClient();
 
-  supabase.auth.onAuthStateChange((_event, session) => {
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange((_event, session) => {
     // 세션이 있으면 IUser로 변환, 없으면 null — Presentation에 정규화된 형태로 전달
     const user = session?.user ? toIUser(session.user) : null;
     callback(user);
   });
+
+  // WHY: subscription.unsubscribe를 반환해 Presentation이 cleanup 시 구독을 해제할 수 있게 한다.
+  // React useEffect cleanup에서 `return authModule.onAuthStateChange(cb)` 패턴으로 사용.
+  return () => subscription.unsubscribe();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
