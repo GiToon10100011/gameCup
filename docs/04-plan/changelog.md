@@ -40,6 +40,7 @@
   - 설정 가이드 [`../06-setup/github-actions-coderabbit-notify.md`](../06-setup/github-actions-coderabbit-notify.md) (8개 표준 섹션) + `docs/06-setup/README.md` 인덱스 갱신
   - ⚠️ **활성화 조건:** 이 이벤트 워크플로들은 default 브랜치(`main`)의 정의로만 실행 → main 도달 후 발동 (가이드 §7)
 - **이슈 #75 — 미구현 단위 테스트 7건 실구현** (2026.05.26): `it.todo`로 남아 있던 테스트를 실제 단언으로 전환 — `tournamentModule.test.ts` 5건(UT-06 selectWinner / UT-07·08 advanceRound / startTournament 가드 F-06 / 부전승 F-09), `candidateModule.test.ts` 1건(canStartTournament F-06), `useDebounce.test.ts` 1건(fake timer 기반 연속 입력 마지막 값). 전체 **114 passed / 0 todo**. (PR #74 리뷰 후속, #28·#29 셔플/페어 유틸은 스캐폴딩 완료 확인 후 close.)
+- **이슈 #104 — `supabaseClient.ts` 게이트웨이 초기화** (Epic A / Story #103, 2026.05.26): Data 계층 Supabase 진입점 신설. `@supabase/ssr` 기반 `createBrowserSupabaseClient()`(클라이언트 컴포넌트)·`createServerSupabaseClient()`(라우트 핸들러·서버 컴포넌트, `next/headers` 쿠키 어댑터 getAll/setAll로 PKCE 세션 쿠키 관리)·env 가드 `getSupabaseEnv()`(URL/ANON_KEY 누락 시 명확 throw, **호출 시점 검사**라 env 없이도 빌드 통과). auth/DB 메서드는 후속 모듈(#108 authModule 등)이 이 클라이언트로 구현. `@supabase/supabase-js`·`@supabase/ssr` 의존성 추가. 테스트 11건(`supabaseClient.test.ts`, ssr·next/headers 모킹). 전체 **125 passed**.
 
 ### Changed
 - **인터페이스 `I` 접두사 + 블록 주석 컨벤션 영구 적용** (사용자 영구 원칙, PR #63 리뷰 + 2026.05.20): TypeScript `interface`는 항상 `I` 접두사(예: `ISearchInputProps`), `type`/컴포넌트는 영향 없음. 새 코드 블록(함수·effect·분기·jsx·테스트)마다 한국어 주석 필수(교육·포트폴리오 목적, 보안 우려 없음). `CLAUDE.md` §5·`.claude/agents/code.md`·글로벌 `project-bootstrap`·사용자 메모리(`feedback_interface_i_prefix.md`, `feedback_block_comments_required.md`)에 명문화.
