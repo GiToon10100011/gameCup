@@ -1,6 +1,6 @@
 # Supabase 설정 가이드
 
-> **도입 시점:** Iteration 4 / 2026.05.25 (F-14 매직 링크 인증 · F-16~F-20 토너먼트·결과·공유 저장 · NF-06 RLS 격리)
+> **도입 시점:** Iteration 4 / 2026.05.25 (F-14 OTP 이메일 인증 · F-16~F-20 토너먼트·결과·공유 저장 · NF-06 RLS 격리)
 > **대상:** Supabase 인증·DB를 동작시키기 위해 프로젝트를 설정해야 하는 모든 개발자
 
 ---
@@ -11,7 +11,7 @@ Supabase는 PostgreSQL 기반의 오픈소스 Backend-as-a-Service(BaaS)다. Gam
 
 | 역할 | 담당 기능 |
 | --- | --- |
-| **Supabase Auth (매직 링크)** | F-14 사용자 인증 · F-15 인증 가드 · NF-07 세션 자동 갱신 |
+| **Supabase Auth (OTP 이메일 인증)** | F-14 사용자 인증 · F-15 인증 가드 · NF-07 세션 자동 갱신 |
 | **Supabase Database (PostgreSQL + RLS)** | F-16 토너먼트 저장 · F-17 목록·관리 · F-19 결과 이력 · F-20 공개 공유 링크 · NF-06 사용자별 데이터 격리 |
 
 GameCup의 아키텍처에서 Supabase는 **Data 계층**에 위치한다. Presentation이 직접 접근하는 것은 금지되며, Business 계층의 `AuthModule`과 `TournamentStorageModule`을 통해서만 호출된다. (UML v2.0 §1 `SupabaseClient` 참조)
@@ -35,7 +35,7 @@ GameCup의 아키텍처에서 Supabase는 **Data 계층**에 위치한다. Prese
 | --- | --- |
 | **Supabase 계정** | [https://supabase.com](https://supabase.com) 회원가입 (GitHub·이메일 모두 가능, 무료 플랜 충분) |
 | **무료 플랜 한도 확인** | 프로젝트 2개, 500 MB DB, 50,000 MAU — Iteration 4 개발 단계에서 초과 없음 |
-| **이메일 발송 설정** | Supabase 무료 플랜은 시간당 3~4회 매직 링크 발송 제한. 개발 중에는 Supabase 대시보드 "Email Logs"로 확인 가능 (운영 전환 시 외부 SMTP 연동 권장) |
+| **이메일 발송 설정** | Supabase 무료 플랜은 시간당 3~4회 OTP 이메일 발송 제한. 개발 중에는 Supabase 대시보드 "Authentication → Email Logs"로 확인 가능 (운영 전환 시 외부 SMTP 연동 권장) |
 | **Node.js ≥ 20.x** | `node -v`로 확인 |
 
 ---
@@ -69,54 +69,57 @@ npm install @supabase/supabase-js @supabase/ssr
 
 > 이 라이브러리는 브라우저 번들과 Node.js 서버 모두에서 동작한다. Next.js 14 App Router 환경에서는 클라이언트 컴포넌트 및 서버 컴포넌트·Route Handler 어디서든 사용 가능하나, GameCup 아키텍처 원칙상 **Presentation 계층이 직접 import해서는 안 된다.** `src/lib/supabaseClient.ts`(Data 계층)에서만 초기화하고 나머지는 Business 모듈(`AuthModule`, `TournamentStorageModule`)을 통해 접근한다.
 
-### 4.3 매직 링크 인증 활성화
+### 4.3 OTP 이메일 인증 활성화
 
-Supabase Auth는 기본적으로 Email 제공자가 활성화되어 있으며, Magic Link도 기본 활성화 상태다. 아래 절차로 리다이렉트 URL을 올바르게 설정한다.
+GameCup은 **매직 링크(URL 클릭)** 대신 **이메일 OTP(6자리 코드 입력)** 방식을 사용한다. OTP는 모바일 브라우저에서 이메일 앱 전환 없이 코드만 입력하면 되므로 iOS Safari 등 교차 컨텍스트 문제를 완전히 회피한다. `authModule.signInWithOtp` + `authModule.verifyOtp` API를 사용하며, `/auth/callback` 리다이렉트 라우트는 필요 없다.
 
-#### 4.3.1 Auth 설정 확인
+#### 4.3.1 Email Provider 활성화 확인
 
 1. Supabase 대시보드 → 좌측 메뉴 **"Authentication"** 클릭.
 2. **"Providers"** 탭 → **"Email"** 항목 확인.
-3. 다음 두 토글이 **활성(ON)** 상태인지 확인한다.
-   - `Enable Email provider` → ON
-   - `Enable Magic Links` → ON (기본 ON)
-4. `Confirm email` 옵션은 Magic Link 방식에서는 자동으로 처리되므로 별도 설정 불필요.
+3. `Enable Email provider` → **ON** (기본 ON) 상태인지 확인한다.
+4. `Confirm email` 옵션은 OTP 방식에서 자동 처리되므로 별도 설정 불필요.
 
 > 소셜 OAuth(Google·GitHub)와 비밀번호 기반 인증은 Iteration 4 범위 외다. 필요 시 차기 이터레이션에서 추가한다.
 
-#### 4.3.2 Site URL · Redirect URL 설정
+#### 4.3.2 이메일 템플릿을 OTP 코드 발송으로 변경 ⚠️ 필수
 
-매직 링크를 클릭했을 때 Supabase가 인증 토큰을 포함하여 리다이렉트할 URL을 등록해야 한다. 등록되지 않은 URL로는 리다이렉트가 차단된다.
+**이 단계를 건너뛰면 `signInWithOtp`가 URL 링크를 발송하고 6자리 코드가 전송되지 않는다.** Supabase 기본 이메일 템플릿은 `{{ .ConfirmationURL }}`(링크)를 발송하는데, `{{ .Token }}`(6자리 코드)으로 교체해야 한다.
 
-1. Supabase 대시보드 → **"Authentication"** → **"URL Configuration"** 탭.
-2. **Site URL** 란에 기본 URL을 입력한다.
+1. Supabase 대시보드 → **"Authentication"** → **"Email Templates"** 탭.
+2. 템플릿 목록에서 **"Magic Link"** 를 클릭한다.
 
-   | 환경 | Site URL |
-   | --- | --- |
-   | 로컬 개발 | `http://localhost:3000` |
-   | Vercel 프리뷰 (Iteration 4 배포 시 추가) | `https://<프로젝트명>.vercel.app` |
+   > `signInWithOtp(email)` 호출 시 내부적으로 "Magic Link" 템플릿을 사용한다. 템플릿 이름이 "Magic Link"여도 `{{ .Token }}`을 담으면 코드 이메일로 변환된다.
 
-3. **Redirect URLs** 란에 콜백 경로를 추가한다.
+3. **"Message body"** 에서 `{{ .ConfirmationURL }}`을 찾아 다음과 같이 교체한다.
 
-   ```text
-   http://localhost:3000/auth/callback
+   변경 전 (링크 방식):
+   ```html
+   <p><a href="{{ .ConfirmationURL }}">Log In</a></p>
    ```
 
-   Vercel 배포 시 추가:
-
-   ```text
-   https://<프로젝트명>.vercel.app/auth/callback
+   변경 후 (코드 방식):
+   ```html
+   <p>아래 6자리 인증 코드를 입력하세요.</p>
+   <h2 style="letter-spacing: 4px;">{{ .Token }}</h2>
+   <p>이 코드는 {{ .TokenHash }}가 만료되기 전까지 유효합니다.</p>
    ```
 
-   > `*` 와일드카드도 지원하나, 보안상 환경별 정확한 URL을 명시하는 것을 권장한다.
+   > 실제 만료 시간은 아래 §4.3.3에서 설정한다(기본 1시간).
 
 4. **"Save"** 클릭.
 
-#### 4.3.3 왜 `/auth/callback`인가
+#### 4.3.3 OTP 만료 시간·자릿수 확인
 
-Next.js App Router에서는 **PKCE 흐름**을 사용한다(`@supabase/ssr` 기반 권장 방식). 매직 링크를 클릭하면 Supabase가 `Redirect URL`로 **`?code=<auth_code>` 쿼리 파라미터**를 붙여 리다이렉트하고, 서버 라우트 핸들러 `app/auth/callback/route.ts`가 이 `code`를 받아 `supabase.auth.exchangeCodeForSession(code)`로 세션 쿠키를 수립한 뒤 앱으로 리다이렉트한다.
+1. Supabase 대시보드 → **"Authentication"** → **"Providers"** → **"Email"**.
+2. 다음 설정 값을 확인한다(기본값으로 충분).
 
-> ⚠️ **주의:** 구형 implicit 흐름은 토큰을 URL **fragment**(`#access_token=...`)로 전달하는데, fragment는 브라우저에만 머물고 **서버(route handler)로 전송되지 않는다**. 따라서 App Router의 server route에서 세션을 완성하려면 반드시 PKCE(`?code=`) 흐름이어야 한다. (Supabase 대시보드 기본값이 PKCE이며, `@supabase/ssr`의 `createServerClient`가 이를 처리한다.) 이 경로가 없으면 로그인이 완료되지 않는다.
+   | 설정 | 기본값 | 권장 |
+   | --- | --- | --- |
+   | `Email OTP Expiration` | 3600초 (1시간) | 개발 중 기본값 유지; 운영 시 600~900초(10~15분)로 단축 고려 |
+   | `Email OTP Length` | 6자리 | 변경 불필요 — `authModule`·`AuthPage`가 6자리 기준으로 구현됨 |
+
+3. 변경이 있으면 **"Save"** 클릭.
 
 ### 4.4 DB 스키마 생성
 
@@ -387,15 +390,16 @@ URL: 설정됨
 KEY: 설정됨
 ```
 
-### 6.3 매직 링크 로그인 1회 검증
+### 6.3 OTP 이메일 로그인 1회 검증
 
-1. `npm run dev` 실행 후 [http://localhost:3000/auth](http://localhost:3000/auth) 접속 (AuthPage 구현 후).
-2. 자신의 이메일 주소를 입력하고 "링크 전송" 클릭.
-3. 수신된 이메일에서 링크 클릭 → `http://localhost:3000/auth/callback`으로 리다이렉트.
-4. 브라우저 개발자 도구 → "Application" → "Cookies" → `sb-<프로젝트-id>-auth-token`이 설정되면 정상.
-5. HubPage로 자동 이동되는지 확인.
+1. `npm run dev` 실행 후 [http://localhost:3000/auth](http://localhost:3000/auth) 접속.
+2. 자신의 이메일 주소를 입력하고 **"코드 전송"** 클릭.
+3. 수신된 이메일에서 **6자리 숫자 코드**를 확인한다. (§4.3.2 템플릿 미교체 시 URL 링크가 오면 해당 절차를 먼저 완료한다.)
+4. AuthPage 2단계 입력창에 코드를 입력하고 **"확인"** 클릭.
+5. 로그인 성공 시 홈(`/`)으로 이동되는지 확인.
+6. 브라우저 개발자 도구 → "Application" → "Cookies" → `sb-<프로젝트-id>-auth-token`이 설정되면 세션 수립 완료.
 
-> AuthPage 및 콜백 라우트 구현 전이라면, Supabase 대시보드 → **"Authentication"** → **"Users"** 탭에서 사용자가 등록되었는지로 확인할 수 있다.
+> AuthPage 구현 전이라면, Supabase 대시보드 → **"Authentication"** → **"Users"** 탭에서 사용자가 등록되었는지로 확인할 수 있다.
 
 ### 6.4 RLS 타 사용자 데이터 접근 차단 확인
 
@@ -435,8 +439,9 @@ KEY: 설정됨
 
 | 증상 | 원인 | 해결 |
 | --- | --- | --- |
-| 매직 링크 이메일이 수신되지 않는다 | Supabase 무료 플랜의 시간당 발송 제한(3~4회) 초과 | 대시보드 → Authentication → Email Logs 확인. 잠시 후 재시도. 반복 문제 시 외부 SMTP(Resend, SendGrid 등) 연동 고려. |
-| 매직 링크 클릭 후 "Invalid redirect URL" 오류 | 대시보드의 "Redirect URLs"에 `http://localhost:3000/auth/callback`이 등록되지 않음 | 4.3.2 절차를 따라 Redirect URL 등록 후 재시도 |
+| OTP 코드 이메일이 수신되지 않는다 | Supabase 무료 플랜의 시간당 발송 제한(3~4회) 초과 | 대시보드 → Authentication → Email Logs 확인. 잠시 후 재시도. 반복 문제 시 외부 SMTP(Resend, SendGrid 등) 연동 고려. 스팸함 확인도 권장. |
+| OTP 코드 대신 링크가 발송된다 | §4.3.2 이메일 템플릿에서 `{{ .Token }}` 교체가 누락됨 | §4.3.2 절차에 따라 "Magic Link" 템플릿의 `{{ .ConfirmationURL }}`을 `{{ .Token }}`으로 교체 후 저장 |
+| 코드 입력 시 "Token has expired or is invalid" 오류 | OTP 만료(기본 1시간) 또는 오타 | 코드를 다시 요청("코드 전송")하거나 코드를 주의 깊게 재입력. 숫자 0/O, 1/l 혼동에 주의. |
 | 로그인 후 세션이 유지되지 않고 새로고침 시 로그아웃된다 | `onAuthStateChange` 리스너가 설정되지 않았거나, AuthSlice에 세션이 저장되지 않음 | `AuthModule.onAuthStateChange`가 앱 초기화 시 등록되는지 확인. Next.js App Router에서는 루트 레이아웃(`app/layout.tsx`)에서 초기화 권장. |
 | DB 쿼리 결과가 빈 배열 `[]`로 돌아온다 (데이터가 있는데) | RLS가 활성화되어 있고 세션이 없는 상태에서 쿼리가 실행됨 | 쿼리 실행 전 `supabase.auth.getSession()`으로 세션 유무를 확인. 세션이 없으면 먼저 로그인 플로우를 완료해야 함. |
 | `PGRST116` 오류 — `JSON object requested, multiple (or no) rows returned` | `.single()` 사용 시 결과가 없거나 여러 행이 반환됨 | `share_id` 오타·누락 확인. RLS 정책상 접근 불가한 행을 `.single()`로 조회하면 동일 오류 발생. `.maybeSingle()`로 대체 후 `null` 처리 추가. |
@@ -449,8 +454,8 @@ KEY: 설정됨
 ## 8. 참고 자료
 
 - [Supabase 공식 문서](https://supabase.com/docs)
-- [Supabase Auth — Magic Link 가이드](https://supabase.com/docs/guides/auth/auth-magic-link)
-- [Supabase Auth — Redirect URLs 설정](https://supabase.com/docs/guides/auth/redirect-urls)
+- [Supabase Auth — OTP (이메일 코드) 가이드](https://supabase.com/docs/guides/auth/auth-email-passwordless)
+- [Supabase Auth — 이메일 템플릿 커스터마이즈](https://supabase.com/docs/guides/auth/auth-email-templates)
 - [Supabase Row Level Security (RLS) 가이드](https://supabase.com/docs/guides/auth/row-level-security)
 - [Supabase JavaScript 클라이언트 v2 레퍼런스](https://supabase.com/docs/reference/javascript/introduction)
 - [Next.js 14 App Router + Supabase Auth 통합 가이드](https://supabase.com/docs/guides/auth/server-side/nextjs)

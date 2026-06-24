@@ -45,6 +45,7 @@
   - **초기 스키마를 마이그레이션으로 캡처**: `supabase/migrations/20260526000000_initial_schema.sql`(3테이블 + 인덱스 + RLS). 대시보드 수동 적용분을 코드로 버전관리(원격엔 적용됨 → `migration repair --status applied`로 중복 방지).
   - **전용 `supabase` 에이전트** 신설(`.claude/agents/supabase.md`) — 마이그레이션 작성·RLS·타입 생성·CLI 명령 준비 담당. login/link/db push 등 인증·TTY 명령은 사용자 `!` 실행. `CLAUDE.md` §2 로스터(9→**10개**)·결정 트리에 추가, `supabase-setup.md` §4.7 CLI 워크플로 섹션 추가.
   - 사용자 메모리 `feedback_supabase_cli_first.md` 신설.
+- **이슈 #139 — F-14 인증 방식 매직링크 → OTP 이메일 문서 정합화** (2026.06.24): 코드는 이미 OTP 완료(`signInWithOtp`/`verifyOtp`, PR #137·#138). 문서 전체(`supabase-setup.md`·`iteration-4.md`·`iteration-4-mapping.md`·UC Fully Dressed/Stepwise·`uml-v2.0.md`·`tech-rationale`·`game.ts` 주석)에 남아 있던 "매직 링크" 표현을 OTP로 일괄 정합. 가장 중요한 추가: `supabase-setup.md §4.3.2`에 Supabase 이메일 템플릿을 `{{ .ConfirmationURL }}` → `{{ .Token }}`으로 바꾸는 단계(이 설정 없이는 링크가 발송됨) 신규 작성.
 
 ### Changed
 - **인터페이스 `I` 접두사 + 블록 주석 컨벤션 영구 적용** (사용자 영구 원칙, PR #63 리뷰 + 2026.05.20): TypeScript `interface`는 항상 `I` 접두사(예: `ISearchInputProps`), `type`/컴포넌트는 영향 없음. 새 코드 블록(함수·effect·분기·jsx·테스트)마다 한국어 주석 필수(교육·포트폴리오 목적, 보안 우려 없음). `CLAUDE.md` §5·`.claude/agents/code.md`·글로벌 `project-bootstrap`·사용자 메모리(`feedback_interface_i_prefix.md`, `feedback_block_comments_required.md`)에 명문화.

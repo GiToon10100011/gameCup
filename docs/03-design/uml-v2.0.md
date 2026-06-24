@@ -4,7 +4,7 @@
 > **생성 일자:** 2026.05.25
 > **이전 버전:** v1.1 (2026.05.12, 현 베이스라인) / v1.2 (2026.05.17, Draft — StateStore 슬라이스 분리)
 > **v1.2 Draft 흡수 여부:** v1.2의 StateStore 4-슬라이스 분리(CacheSlice / CandidateSlice / TournamentSlice / ResultSlice) 구조를 그대로 계승하여 v2.0에 흡수함. v1.2는 Draft로서 코드 미반영 상태였으므로 별도 이전 베이스라인으로 취급하지 않음.
-> **주요 변경:** PRD Iteration 4(v4.0) — 멀티 토너먼트 + 사용자 인증(매직 링크) + 온보딩 + 결과 공유 구조로 메이저 확장. Data 계층에 SupabaseClient 추가, Business 계층에 AuthModule·TournamentStorageModule 신규 추가, 도메인 엔티티(User·Tournament·TournamentResult·PublicShare) 신규 정의, Store 슬라이스에 AuthSlice·TournamentLibrarySlice 추가.
+> **주요 변경:** PRD Iteration 4(v4.0) — 멀티 토너먼트 + 사용자 인증(OTP 이메일) + 온보딩 + 결과 공유 구조로 메이저 확장. Data 계층에 SupabaseClient 추가, Business 계층에 AuthModule·TournamentStorageModule 신규 추가, 도메인 엔티티(User·Tournament·TournamentResult·PublicShare) 신규 정의, Store 슬라이스에 AuthSlice·TournamentLibrarySlice 추가.
 
 ---
 
@@ -152,7 +152,7 @@ classDiagram
     class SupabaseClient {
         -string supabaseUrl
         -string supabaseAnonKey
-        +sendMagicLink(email) void
+        +signInWithOtp(email) void
         +getSession() IUser~null~
         +onAuthStateChange(cb) void
         +signOut() void
@@ -202,7 +202,8 @@ classDiagram
     class AuthModule {
         -StateStore state
         -SupabaseClient supabase
-        +signInWithMagicLink(email) void
+        +signInWithOtp(email) void
+        +verifyOtp(email, token) IUser
         +signOut() void
         +getSession() IUser~null~
         +onAuthStateChange(cb) void
@@ -232,7 +233,7 @@ classDiagram
     class AuthPage {
         <<Presentation>>
     }
-    note for AuthPage "매직 링크 요청 화면\n+ 콜백 처리 (F-14·F-15)"
+    note for AuthPage "이메일 OTP 인증 화면\n(2단계: 이메일 입력→코드 입력, F-14·F-15)"
 
     class CreatePage {
         <<Presentation>>
@@ -327,7 +328,7 @@ PRD Iteration 4 v4.0 요구사항 ↔ 클래스/필드 매핑:
 ## 2. 시퀀스 다이어그램 (Sequence Diagram) v2.0
 
 > **다이어그램 생성 일자:** 2026.05.25 (v2.0)
-> **변경점:** v1.2의 UC별 4개 시퀀스에 더해, Iteration 4 신규 플로우 3개 추가 (매직 링크 로그인 / 토너먼트 생성·저장 / 허브→플레이→결과 저장·공유). 기존 UC-01~UC-04 시퀀스는 Presentation 라우트명만 갱신하여 유지.
+> **변경점:** v1.2의 UC별 4개 시퀀스에 더해, Iteration 4 신규 플로우 3개 추가 (OTP 이메일 로그인 / 토너먼트 생성·저장 / 허브→플레이→결과 저장·공유). 기존 UC-01~UC-04 시퀀스는 Presentation 라우트명만 갱신하여 유지.
 
 ### 3계층 아키텍처 매핑
 
@@ -341,7 +342,7 @@ PRD Iteration 4 v4.0 요구사항 ↔ 클래스/필드 매핑:
 
 ---
 
-### 2.1 매직 링크 로그인 (F-14·F-15)
+### 2.1 OTP 이메일 로그인 (F-14·F-15)
 
 ```mermaid
 sequenceDiagram
@@ -352,17 +353,18 @@ sequenceDiagram
     participant SupabaseClient as [D] SupabaseClient
     participant AuthSlice as [D] AuthSlice
 
-    User->>AuthPage: 이메일 입력 후 "링크 전송" 클릭
-    AuthPage->>AuthModule: signInWithMagicLink(email)
-    AuthModule->>SupabaseClient: sendMagicLink(email)
-    SupabaseClient-->>AuthModule: 성공 (이메일 발송됨)
-    AuthModule-->>AuthPage: 확인 메시지 표시
+    User->>AuthPage: 이메일 입력 후 "코드 전송" 클릭
+    AuthPage->>AuthModule: signInWithOtp(email)
+    AuthModule->>SupabaseClient: signInWithOtp(email)
+    SupabaseClient-->>AuthModule: 성공 (6자리 OTP 코드 이메일 발송)
+    AuthModule-->>AuthPage: 2단계 — OTP 입력 폼 표시
 
-    Note over User,AuthSlice: 사용자가 이메일 링크를 클릭 → 콜백 URL 진입
+    Note over User,AuthSlice: 사용자가 수신한 6자리 코드를 입력 (콜백 불필요)
 
-    AuthPage->>AuthModule: onAuthStateChange(callback)
-    AuthModule->>SupabaseClient: onAuthStateChange(callback)
-    SupabaseClient-->>AuthModule: session 이벤트 수신 (IUser)
+    User->>AuthPage: 6자리 코드 입력 후 "확인" 클릭
+    AuthPage->>AuthModule: verifyOtp(email, token)
+    AuthModule->>SupabaseClient: verifyOtp(email, token, type:'email')
+    SupabaseClient-->>AuthModule: 세션 생성 완료 (IUser)
     AuthModule->>AuthSlice: setUser(user)
     AuthSlice-->>AuthModule: 상태 갱신 완료
     AuthModule-->>AuthPage: 인증 완료 → HubPage로 리다이렉트
@@ -501,14 +503,14 @@ sequenceDiagram
 flowchart TD
     Start([앱 진입]) --> CheckSession{세션 존재?}
 
-    CheckSession -->|없음| AuthPage[매직 링크 이메일 입력\nAuthPage]
+    CheckSession -->|없음| AuthPage[OTP 이메일 인증\nAuthPage]
     CheckSession -->|있음| HubPage[토너먼트 허브\nHubPage]
 
-    AuthPage --> SendLink[매직 링크 발송\nAuthModule.signInWithMagicLink]
-    SendLink --> WaitLink[링크 클릭 대기]
-    WaitLink --> LinkClicked{링크 클릭됨?}
-    LinkClicked -->|콜백 수신| SetSession[세션 저장\nAuthSlice.setUser]
-    LinkClicked -->|만료/오류| AuthError[오류 안내 + 재시도]
+    AuthPage --> SendOtp[OTP 코드 발송\nAuthModule.signInWithOtp]
+    SendOtp --> EnterCode[6자리 코드 입력\nAuthModule.verifyOtp]
+    EnterCode --> OtpResult{코드 검증}
+    OtpResult -->|성공| SetSession[세션 저장\nAuthSlice.setUser]
+    OtpResult -->|만료/오류| AuthError[오류 안내 + 재시도]
     AuthError --> AuthPage
     SetSession --> HubPage
 
@@ -576,8 +578,8 @@ flowchart TD
 
 | 분기/예외 | 처리 내용 | 관련 요구사항 |
 | --- | --- | --- |
-| 세션 없음 | AuthPage로 이동, 매직 링크 발송 플로우 진입 | F-14·F-15 |
-| 링크 만료/콜백 오류 | 오류 안내 후 AuthPage로 재진입 | F-14 |
+| 세션 없음 | AuthPage로 이동, OTP 코드 입력 플로우 진입 | F-14·F-15 |
+| 코드 만료/검증 오류 | 오류 안내 후 AuthPage로 재진입 | F-14 |
 | 저장 토너먼트 0개 | 온보딩 시퀀스(F-18) 진입 후 CreatePage 유도 | F-18 |
 | 중복 후보 등록 | DuplicateToast 표시 후 검색 화면 유지 | F-04 |
 | 후보 수 < 2 | 저장 버튼 비활성화, 계속 후보 추가 유도 | F-06·F-16 |

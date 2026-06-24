@@ -175,7 +175,7 @@
 - **도입 시점:** Iteration 4 / 2026.05.25
 - **분류:** 외부 서비스 (BaaS — DB · Auth · Realtime · Storage)
 - **선택 이유:**
-  - 인증(Supabase Auth 매직 링크)·PostgreSQL DB·RLS·Realtime 구독을 단일 BaaS로 제공 — 별도 백엔드 서버 없이 사용자별 토너먼트(설문) 생성·저장·관리(F-16·F-17), 결과 이력 보존(F-19), 공개 URL 공유(F-20)를 구현 가능
+  - 인증(Supabase Auth OTP 이메일)·PostgreSQL DB·RLS·Realtime 구독을 단일 BaaS로 제공 — 별도 백엔드 서버 없이 사용자별 토너먼트(설문) 생성·저장·관리(F-16·F-17), 결과 이력 보존(F-19), 공개 URL 공유(F-20)를 구현 가능
   - PostgreSQL 기반이므로 향후 자체 호스팅(Railway·Neon 등)으로 이주 시 SQL·스키마를 그대로 이전 가능 — Vendor 종속 위험 최소화
   - Row Level Security(RLS)로 사용자별 데이터 격리를 DB 계층에서 선언적으로 강제 — anon key 노출 시에도 타인 데이터 접근 차단 (NF-06)
 - **고려한 대안:**
@@ -191,7 +191,7 @@
 - **관련 요구사항:** F-14 · F-15 · F-16 · F-17 · F-18 · F-19 · F-20, NF-06, NF-07
 - **관련 가이드:** [`../06-setup/supabase-setup.md`](../06-setup/supabase-setup.md) (동시 작성 중)
 
-### Supabase Auth — 매직 링크(Passwordless)
+### Supabase Auth — OTP 이메일(Passwordless)
 
 - **도입 시점:** Iteration 4 / 2026.05.25
 - **분류:** 외부 서비스 (인증)
