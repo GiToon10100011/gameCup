@@ -6,11 +6,10 @@
 
 import { createBrowserClient } from "@supabase/ssr";
 import { createServerClient } from "@supabase/ssr";
-// Next.js 14 App Router에서 서버 컴포넌트·라우트 핸들러에서만 사용 가능한 쿠키 API.
-// 클라이언트 컴포넌트 환경에서 이 import 경로를 호출하면 런타임 에러가 발생하므로,
-// createServerSupabaseClient 는 서버 측에서만 호출해야 한다.
-import { cookies } from "next/headers";
 import type { SupabaseClient } from "@supabase/supabase-js";
+// WHY: next/headers는 서버 전용 API로, 최상단 import 시 클라이언트 번들에 포함되어
+// webpack 빌드 오류가 발생한다. createServerSupabaseClient 함수 내부에서
+// 동적 import()로 지연 로딩해 클라이언트 번들에서 완전히 제외한다.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 환경 변수 가드 헬퍼
@@ -71,9 +70,11 @@ export function createBrowserSupabaseClient(): SupabaseClient {
 export async function createServerSupabaseClient(): Promise<SupabaseClient> {
   const { url, anonKey } = getSupabaseEnv();
 
+  // cookies()를 동적 import로 지연 로딩해 클라이언트 번들에서 제외한다.
   // Next.js 14.2의 cookies()는 동기적으로 ReadonlyRequestCookies를 반환한다(Promise 아님).
   // 그럼에도 await를 두는 이유: Next 15부터 cookies()가 Promise를 반환하도록 바뀌므로,
   // await로 감싸 두면 동기(14)·비동기(15) 양쪽에서 동일하게 동작한다(동기 값의 await는 무해).
+  const { cookies } = await import("next/headers");
   const cookieStore = await cookies();
 
   return createServerClient(url, anonKey, {
