@@ -81,8 +81,9 @@ export const authPageVariants = tv({
     ].join(" "),
 
     // "다른 이메일로 변경" 텍스트 버튼: muted, hover 시 white
+    // min-h-11(44px) + inline-flex 중앙 정렬 — 모바일 터치 타겟 ≥44px 보장 (CodeRabbit 반영)
     backLink: [
-      "mt-3 w-full text-center text-xs text-[#888888]",
+      "mt-3 inline-flex min-h-11 w-full items-center justify-center text-center text-xs text-[#888888]",
       "transition-colors hover:text-white",
     ].join(" "),
 

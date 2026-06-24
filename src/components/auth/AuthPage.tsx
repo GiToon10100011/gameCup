@@ -8,6 +8,7 @@
 //   2단계 (otp)   — 6자리 코드 입력 → "확인" → authModule.verifyOtp → 홈으로 이동
 //
 // 책임: 폼 상태 관리·로딩·오류 표시를 담당하며, 인증 로직은 authModule에 위임한다.
+//   - TanStack Query v5 `useMutation`으로 로딩·에러 상태를 일관되게 관리한다(수동 setState 최소화).
 // 3계층 위치: Presentation (components/auth/)
 //   - Business 방향: src/modules/authModule.ts (signInWithOtp, verifyOtp)
 //   - 라우팅       : Next.js App Router useRouter (로그인 성공 후 "/" 이동)
@@ -17,8 +18,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useMutation } from "@tanstack/react-query";
 import { authModule } from "@/modules/authModule";
-import { authPageVariants } from "./AuthPage.variants";
+// 경로 별칭(@/) 사용 — src 내부 import는 항상 @/* 로 통일한다 (CodeRabbit 반영)
+import { authPageVariants } from "@/components/auth/AuthPage.variants";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 내부 타입 — 현재 인증 단계 식별자
@@ -40,10 +43,6 @@ export function AuthPage() {
   const [email, setEmail] = useState("");
   // OTP 코드 입력값 — 숫자만 허용(onChange에서 필터링)
   const [token, setToken] = useState("");
-  // 비동기 호출 중 버튼 비활성화 + 로딩 텍스트 표시용 플래그
-  const [loading, setLoading] = useState(false);
-  // 각 단계의 API 오류 메시지 — null이면 오류 박스 미표시
-  const [error, setError] = useState<string | null>(null);
 
   // variants에서 slot 클래스 추출 (스타일은 AuthPage.variants.ts가 단일 소스)
   const {
@@ -62,59 +61,73 @@ export function AuthPage() {
     errorBox,
   } = authPageVariants();
 
-  // ─── 1단계 핸들러: 이메일로 OTP 코드 전송 ────────────────────────────────
-  // authModule.signInWithOtp 성공 시 2단계로 전환한다.
-  // 실패 시 에러 메시지를 인라인으로 표시하고 1단계를 유지한다.
-  const handleSendOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.trim()) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      await authModule.signInWithOtp(email.trim());
-      // 코드 전송 성공 → 2단계(코드 입력)으로 전환
+  // ─── 1단계 Mutation: 이메일로 OTP 코드 전송 ──────────────────────────────
+  // TanStack Query useMutation — isPending/error를 직접 읽어 UI 상태를 표현한다.
+  // onSuccess: 코드 전송 성공 → 2단계로 전환.
+  const sendOtpMutation = useMutation({
+    mutationFn: (emailArg: string) => authModule.signInWithOtp(emailArg),
+    onSuccess: () => {
+      // 전송 성공 → 2단계(코드 입력)로 전환
       setStep("otp");
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "코드 전송에 실패했습니다.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+  });
 
-  // ─── 2단계 핸들러: OTP 코드 검증 → 로그인 완료 ──────────────────────────
-  // authModule.verifyOtp 성공 시 StateStore에 IUser가 저장되고 홈("/")으로 이동한다.
-  // 실패(코드 만료·오류 등) 시 인라인 오류를 표시하고 2단계를 유지한다.
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (token.length !== 6) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      await authModule.verifyOtp(email.trim(), token.trim());
+  // ─── 2단계 Mutation: OTP 코드 검증 → 로그인 완료 ─────────────────────────
+  // TanStack Query useMutation — 성공 시 StateStore에 IUser가 저장되고 홈("/")으로 이동.
+  // 실패(코드 만료·오류) 시 error가 non-null 이 되어 인라인 오류 박스를 표시한다.
+  const verifyOtpMutation = useMutation({
+    mutationFn: ({
+      emailArg,
+      tokenArg,
+    }: {
+      emailArg: string;
+      tokenArg: string;
+    }) => authModule.verifyOtp(emailArg, tokenArg),
+    onSuccess: () => {
       // 로그인 성공 → 홈("/")으로 이동
       router.push("/");
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "코드 인증에 실패했습니다.",
-      );
-    } finally {
-      setLoading(false);
-    }
+    },
+  });
+
+  // ─── 1단계 제출 핸들러 ────────────────────────────────────────────────────
+  const handleSendOtp = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+    sendOtpMutation.mutate(email.trim());
+  };
+
+  // ─── 2단계 제출 핸들러 ────────────────────────────────────────────────────
+  const handleVerifyOtp = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (token.length !== 6) return;
+    verifyOtpMutation.mutate({ emailArg: email.trim(), tokenArg: token.trim() });
   };
 
   // ─── 이메일 단계로 돌아가기 ──────────────────────────────────────────────
-  // "다른 이메일로 변경" 클릭 시 1단계로 되돌리고 코드·오류를 초기화한다.
+  // "다른 이메일로 변경" 클릭 시 1단계로 되돌리고 코드·mutation 오류를 초기화한다.
   const handleBack = () => {
     setStep("email");
     setToken("");
-    setError(null);
+    // 두 mutation의 오류 상태를 초기화해 이전 오류가 다음 시도에 남지 않도록 한다
+    sendOtpMutation.reset();
+    verifyOtpMutation.reset();
   };
+
+  // ─── 각 단계의 오류 문자열 추출 ──────────────────────────────────────────
+  // mutation.error는 Error 인스턴스이거나 unknown일 수 있으므로 방어적으로 처리한다.
+  const sendError =
+    sendOtpMutation.error instanceof Error
+      ? sendOtpMutation.error.message
+      : sendOtpMutation.error
+        ? "코드 전송에 실패했습니다."
+        : null;
+
+  const verifyError =
+    verifyOtpMutation.error instanceof Error
+      ? verifyOtpMutation.error.message
+      : verifyOtpMutation.error
+        ? "코드 인증에 실패했습니다."
+        : null;
 
   // ─── 렌더 ─────────────────────────────────────────────────────────────────
   return (
@@ -143,34 +156,31 @@ export function AuthPage() {
                   id="email"
                   type="email"
                   autoComplete="email"
-                  // 페이지 로드 시 즉시 포커스 — 빠른 입력 유도
-                  // eslint-disable-next-line jsx-a11y/no-autofocus
-                  autoFocus
                   required
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className={input()}
-                  disabled={loading}
-                  aria-describedby={error ? "email-error" : undefined}
+                  disabled={sendOtpMutation.isPending}
+                  aria-describedby={sendError ? "email-error" : undefined}
                 />
               </div>
             </div>
 
             {/* 1단계 인라인 오류 메시지 */}
-            {error && (
+            {sendError && (
               <p id="email-error" role="alert" className={errorBox()}>
-                {error}
+                {sendError}
               </p>
             )}
 
-            {/* 코드 전송 버튼 — 이메일이 비어있거나 로딩 중이면 비활성화 */}
+            {/* 코드 전송 버튼 — 이메일이 비어있거나 전송 중이면 비활성화 */}
             <button
               type="submit"
-              disabled={loading || !email.trim()}
+              disabled={sendOtpMutation.isPending || !email.trim()}
               className={submitButton()}
             >
-              {loading ? "전송 중…" : "코드 전송"}
+              {sendOtpMutation.isPending ? "전송 중…" : "코드 전송"}
             </button>
           </form>
         ) : (
@@ -204,9 +214,6 @@ export function AuthPage() {
                   inputMode="numeric"
                   // 브라우저·iOS 자동완성 힌트 — "123456" 형태 OTP를 SMS/이메일에서 자동 채움
                   autoComplete="one-time-code"
-                  // 2단계 진입 시 즉시 포커스 — 사용자가 바로 입력할 수 있게
-                  // eslint-disable-next-line jsx-a11y/no-autofocus
-                  autoFocus
                   required
                   placeholder="123456"
                   maxLength={6}
@@ -216,8 +223,11 @@ export function AuthPage() {
                     setToken(e.target.value.replace(/\D/g, "").slice(0, 6))
                   }
                   className={input()}
-                  disabled={loading}
-                  aria-describedby="token-hint token-error"
+                  disabled={verifyOtpMutation.isPending}
+                  // 에러가 없을 땐 token-error ID가 DOM에 없으므로 참조하지 않는다 (CodeRabbit 반영)
+                  aria-describedby={
+                    verifyError ? "token-hint token-error" : "token-hint"
+                  }
                 />
                 {/* 스팸함 안내 — OTP가 안 올 때 사용자가 먼저 확인할 곳 */}
                 <p id="token-hint" className={otpHint()}>
@@ -227,19 +237,19 @@ export function AuthPage() {
             </div>
 
             {/* 2단계 인라인 오류 메시지 */}
-            {error && (
+            {verifyError && (
               <p id="token-error" role="alert" className={errorBox()}>
-                {error}
+                {verifyError}
               </p>
             )}
 
-            {/* 확인 버튼 — 6자리 입력이 완료되기 전·로딩 중에는 비활성화 */}
+            {/* 확인 버튼 — 6자리 입력이 완료되기 전·검증 중에는 비활성화 */}
             <button
               type="submit"
-              disabled={loading || token.length !== 6}
+              disabled={verifyOtpMutation.isPending || token.length !== 6}
               className={submitButton()}
             >
-              {loading ? "확인 중…" : "확인"}
+              {verifyOtpMutation.isPending ? "확인 중…" : "확인"}
             </button>
 
             {/* 이메일 변경 링크 — 잘못 입력한 이메일로 돌아갈 탈출구 */}
@@ -247,7 +257,7 @@ export function AuthPage() {
               type="button"
               onClick={handleBack}
               className={backLink()}
-              disabled={loading}
+              disabled={verifyOtpMutation.isPending}
             >
               다른 이메일로 변경
             </button>
