@@ -38,9 +38,8 @@ export async function middleware(request: NextRequest) {
       // setAll: 토큰 갱신 시 Supabase가 새 쿠키를 쓰는 경로.
       // request.cookies와 supabaseResponse.cookies 양쪽에 모두 반영해야
       // 이후 서버 컴포넌트가 갱신된 세션 쿠키를 올바르게 읽을 수 있다.
-      setAll(
-        cookiesToSet: { name: string; value: string; options: object }[],
-      ) {
+      // 타입 어노테이션을 생략해 createServerClient가 제공하는 콜백 타입을 그대로 사용한다.
+      setAll(cookiesToSet) {
         // request.cookies에 먼저 반영해 후속 미들웨어 체인이 최신 값을 본다.
         cookiesToSet.forEach(({ name, value }) =>
           request.cookies.set(name, value),
@@ -49,11 +48,7 @@ export async function middleware(request: NextRequest) {
         supabaseResponse = NextResponse.next({ request });
         // 응답 Set-Cookie 헤더에 추가해 브라우저까지 갱신된 쿠키를 전달한다.
         cookiesToSet.forEach(({ name, value, options }) =>
-          supabaseResponse.cookies.set(
-            name,
-            value,
-            options as Record<string, unknown>,
-          ),
+          supabaseResponse.cookies.set(name, value, options),
         );
       },
     },
@@ -61,8 +56,12 @@ export async function middleware(request: NextRequest) {
 
   // WHY getUser() 사용: getSession()은 로컬 쿠키를 그대로 신뢰해 보안상 부적절하다.
   // getUser()는 Supabase Auth 서버에 토큰을 검증·갱신 요청해 신뢰할 수 있는 세션을 보장한다.
-  // 네트워크 오류 시에도 미들웨어가 요청을 막지 않도록 에러는 무시한다.
-  await supabase.auth.getUser();
+  // 네트워크 오류·타임아웃 등 예외 발생 시에도 요청을 막지 않도록 에러를 무시한다.
+  try {
+    await supabase.auth.getUser();
+  } catch {
+    // 의도적 무시: 세션 갱신 실패가 페이지 요청 전체를 차단해서는 안 된다.
+  }
 
   return supabaseResponse;
 }
