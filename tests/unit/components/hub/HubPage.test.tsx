@@ -107,10 +107,10 @@ describe("HubPage 통합 (Task #120)", () => {
       expect(screen.queryByText("목록을 불러오는 중…")).not.toBeInTheDocument(),
     );
 
-    // 빈 상태 문구 + 생성 링크
+    // 빈 상태 문구 + 생성 링크 (UC-08 §기본 흐름 3: "첫 토너먼트 만들기")
     expect(screen.getByText("아직 토너먼트가 없어요.")).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "새 토너먼트 만들기" }),
+      screen.getByRole("link", { name: "첫 토너먼트 만들기" }),
     ).toHaveAttribute("href", "/create");
   });
 
