@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { useStateStore } from "@/store/stateStore";
 import { tournamentStorageModule } from "@/modules/tournamentStorageModule";
 import { hubPageVariants } from "./HubPage.variants";
+import { OnboardingEmptyState } from "./OnboardingEmptyState";
 
 export function HubPage() {
   const router = useRouter();
@@ -114,16 +115,10 @@ export function HubPage() {
         </p>
       )}
 
-      {/* 목록 또는 빈 상태 — 토너먼트 유무에 따라 분기 */}
+      {/* 목록 또는 빈 상태 — 토너먼트 유무에 따라 분기 (UC-08) */}
       {myTournaments.length === 0 ? (
-        /* 빈 상태 — Task #122에서 OnboardingEmptyState 컴포넌트로 교체 예정 */
-        <div className={styles.emptyContainer()}>
-          <p className={styles.emptyTitle()}>아직 토너먼트가 없어요.</p>
-          <p className={styles.emptySubtitle()}>첫 토너먼트를 만들고 취향을 가려보세요!</p>
-          <Link href="/create" className={styles.createLink()}>
-            새 토너먼트 만들기
-          </Link>
-        </div>
+        /* 빈 상태 — OnboardingEmptyState(F-18) 컴포넌트로 위임 */
+        <OnboardingEmptyState />
       ) : (
         <>
           {/* 목록 상단 — 새 토너먼트 만들기 버튼 */}
