@@ -1,12 +1,23 @@
 // tournamentStorageModule (src/modules/tournamentStorageModule.ts) 단위 테스트.
 // Task #115 — createTournament (F-16) 검증
+// Task #118 — listMyTournaments·getTournament·deleteTournament (F-17) 검증
 //
-// 검증 범위:
+// 검증 범위 (#115):
 //   1) 로그인 상태에서 name·candidates → Supabase insert → ITournament 반환
 //   2) 비로그인 상태 → 인증 에러 throw
 //   3) Supabase insert 실패 → DB 에러 throw
 //   4) toITournament: DB row(snake_case) → ITournament(camelCase) 정규화 검증
 //   5) Supabase insert에 올바른 컬럼(name·owner_id·candidates)이 전달된다
+//
+// 검증 범위 (#118):
+//   6) listMyTournaments: 로그인 → ITournament[] 반환 (created_at DESC 정렬)
+//   7) listMyTournaments: 비로그인 → 인증 에러 throw
+//   8) listMyTournaments: Supabase 에러 → throw
+//   9) getTournament: id로 단건 조회 → ITournament 반환
+//  10) getTournament: Supabase 에러(행 없음·RLS 차단) → throw
+//  11) deleteTournament: 비로그인 → 인증 에러 throw
+//  12) deleteTournament: 로그인 → Supabase delete 호출
+//  13) deleteTournament: Supabase 에러 → throw
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useStateStore } from "@/store/stateStore";
@@ -17,12 +28,42 @@ import type { IGame, ITournament } from "@/types/game";
 // ─────────────────────────────────────────────────────────────────────────────
 // WHY: vi.mock() factory는 모듈 최상위에서 호이스팅되므로, 그 안에서 참조할 mock
 // 변수도 vi.hoisted()로 미리 초기화해야 "Cannot access before initialization" 에러를 막는다.
-const { mockSingle, mockSelect, mockInsert, mockFrom } = vi.hoisted(() => {
+//
+// 체인 구조:
+//   createTournament:  from().insert({}).select().single()
+//   listMyTournaments: from().select("*").order("created_at", {...})
+//   getTournament:     from().select("*").eq("id", id).single()
+//   deleteTournament:  from().delete().eq("id", id)
+const {
+  mockSingle, mockOrder, mockSelectEq, mockDeleteEq,
+  mockSelect, mockInsert, mockDelete, mockFrom,
+} = vi.hoisted(() => {
+  // 종단 mock — 각 체인의 최종 반환값을 개별 제어
   const mockSingle = vi.fn();
-  const mockSelect = vi.fn(() => ({ single: mockSingle }));
+  const mockOrder = vi.fn();
+  const mockSelectEq = vi.fn(() => ({ single: mockSingle }));
+  const mockDeleteEq = vi.fn();
+
+  // select()가 반환하는 체인 — insert 체인과 직접 체인 모두 동일하게 사용
+  const mockSelect = vi.fn(() => ({
+    single: mockSingle,    // createTournament: insert().select().single()
+    order: mockOrder,      // listMyTournaments: select().order()
+    eq: mockSelectEq,      // getTournament: select().eq().single()
+  }));
+
   const mockInsert = vi.fn(() => ({ select: mockSelect }));
-  const mockFrom = vi.fn(() => ({ insert: mockInsert }));
-  return { mockSingle, mockSelect, mockInsert, mockFrom };
+  const mockDelete = vi.fn(() => ({ eq: mockDeleteEq }));
+
+  const mockFrom = vi.fn(() => ({
+    insert: mockInsert,
+    select: mockSelect,
+    delete: mockDelete,
+  }));
+
+  return {
+    mockSingle, mockOrder, mockSelectEq, mockDeleteEq,
+    mockSelect, mockInsert, mockDelete, mockFrom,
+  };
 });
 
 vi.mock("@/lib/supabaseClient", () => ({
@@ -60,6 +101,10 @@ describe("tournamentStorageModule — createTournament (Task #115, F-16)", () =>
     mockInsert.mockClear();
     mockSelect.mockClear();
     mockSingle.mockClear();
+    mockOrder.mockClear();
+    mockSelectEq.mockClear();
+    mockDeleteEq.mockClear();
+    mockDelete.mockClear();
   });
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -180,5 +225,146 @@ describe("tournamentStorageModule — createTournament (Task #115, F-16)", () =>
       owner_id: "user-002",
       candidates,
     });
+  });
+});
+
+// =============================================================================
+// Task #118 — listMyTournaments · getTournament · deleteTournament (F-17)
+// =============================================================================
+describe("tournamentStorageModule — list/get/delete (Task #118, F-17)", () => {
+  beforeEach(() => {
+    useStateStore.getState().resetAll();
+    useStateStore.getState().clearUser();
+    useStateStore.setState({ isAuthInitialized: false });
+
+    mockFrom.mockClear();
+    mockInsert.mockClear();
+    mockSelect.mockClear();
+    mockSingle.mockClear();
+    mockOrder.mockClear();
+    mockSelectEq.mockClear();
+    mockDeleteEq.mockClear();
+    mockDelete.mockClear();
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 6) listMyTournaments — 성공 경로
+  // ───────────────────────────────────────────────────────────────────────────
+  it("listMyTournaments: 로그인 상태에서 ITournament[] 반환한다", async () => {
+    useStateStore.getState().setUser(mkUser("user-001"));
+
+    const rows = [
+      mkDbRow({ id: "tour-002", name: "두 번째", created_at: "2026-06-27T01:00:00.000Z" }),
+      mkDbRow({ id: "tour-001", name: "첫 번째", created_at: "2026-06-27T00:00:00.000Z" }),
+    ];
+    mockOrder.mockResolvedValue({ data: rows, error: null });
+
+    const { tournamentStorageModule } = await import("@/modules/tournamentStorageModule");
+    const result = await tournamentStorageModule.listMyTournaments();
+
+    // 배열이 ITournament[]로 정규화됐는지 검증
+    expect(result).toHaveLength(2);
+    expect(result[0].id).toBe("tour-002");
+    expect(result[1].id).toBe("tour-001");
+    // ownerId, createdAt camelCase 정규화 확인
+    expect(result[0].ownerId).toBe("user-001");
+
+    // select("*").order("created_at", { ascending: false }) 호출 확인
+    expect(mockSelect).toHaveBeenCalledWith("*");
+    expect(mockOrder).toHaveBeenCalledWith("created_at", { ascending: false });
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 7) listMyTournaments — 비로그인 에러
+  // ───────────────────────────────────────────────────────────────────────────
+  it("listMyTournaments: 비로그인 상태 → 인증 에러 throw", async () => {
+    const { tournamentStorageModule } = await import("@/modules/tournamentStorageModule");
+
+    await expect(tournamentStorageModule.listMyTournaments()).rejects.toThrow(
+      "로그인이 필요합니다",
+    );
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 8) listMyTournaments — Supabase 에러
+  // ───────────────────────────────────────────────────────────────────────────
+  it("listMyTournaments: Supabase 에러 → throw", async () => {
+    useStateStore.getState().setUser(mkUser("user-001"));
+    mockOrder.mockResolvedValue({ data: null, error: { message: "DB 오류" } });
+
+    const { tournamentStorageModule } = await import("@/modules/tournamentStorageModule");
+    await expect(tournamentStorageModule.listMyTournaments()).rejects.toThrow("DB 오류");
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 9) getTournament — 성공 경로
+  // ───────────────────────────────────────────────────────────────────────────
+  it("getTournament: id로 단건 조회 시 ITournament 반환한다", async () => {
+    const row = mkDbRow({ id: "tour-abc" });
+    mockSingle.mockResolvedValue({ data: row, error: null });
+
+    const { tournamentStorageModule } = await import("@/modules/tournamentStorageModule");
+    const result = await tournamentStorageModule.getTournament("tour-abc");
+
+    expect(result.id).toBe("tour-abc");
+    // select("*").eq("id", "tour-abc").single() 체인 확인
+    expect(mockSelectEq).toHaveBeenCalledWith("id", "tour-abc");
+    expect(mockSingle).toHaveBeenCalledTimes(1);
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 10) getTournament — 존재하지 않거나 RLS 차단
+  // ───────────────────────────────────────────────────────────────────────────
+  it("getTournament: Supabase 에러(행 없음·RLS 차단) → throw", async () => {
+    mockSingle.mockResolvedValue({
+      data: null,
+      error: { message: "PGRST116: single row not found" },
+    });
+
+    const { tournamentStorageModule } = await import("@/modules/tournamentStorageModule");
+    await expect(tournamentStorageModule.getTournament("not-exist")).rejects.toThrow(
+      "PGRST116",
+    );
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 11) deleteTournament — 비로그인 에러
+  // ───────────────────────────────────────────────────────────────────────────
+  it("deleteTournament: 비로그인 상태 → 인증 에러 throw", async () => {
+    const { tournamentStorageModule } = await import("@/modules/tournamentStorageModule");
+
+    await expect(tournamentStorageModule.deleteTournament("tour-001")).rejects.toThrow(
+      "로그인이 필요합니다",
+    );
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 12) deleteTournament — 성공 경로
+  // ───────────────────────────────────────────────────────────────────────────
+  it("deleteTournament: 로그인 상태에서 Supabase delete가 올바른 id로 호출된다", async () => {
+    useStateStore.getState().setUser(mkUser("user-001"));
+    mockDeleteEq.mockResolvedValue({ error: null });
+
+    const { tournamentStorageModule } = await import("@/modules/tournamentStorageModule");
+    await tournamentStorageModule.deleteTournament("tour-xyz");
+
+    // delete().eq("id", "tour-xyz") 호출 확인
+    expect(mockDelete).toHaveBeenCalledTimes(1);
+    expect(mockDeleteEq).toHaveBeenCalledWith("id", "tour-xyz");
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 13) deleteTournament — Supabase 에러
+  // ───────────────────────────────────────────────────────────────────────────
+  it("deleteTournament: Supabase 에러 → throw", async () => {
+    useStateStore.getState().setUser(mkUser("user-001"));
+    mockDeleteEq.mockResolvedValue({ error: { message: "RLS 차단" } });
+
+    const { tournamentStorageModule } = await import("@/modules/tournamentStorageModule");
+    await expect(tournamentStorageModule.deleteTournament("tour-001")).rejects.toThrow(
+      "RLS 차단",
+    );
   });
 });

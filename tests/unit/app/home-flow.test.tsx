@@ -29,7 +29,17 @@ vi.mock("@/lib/externalApiClient", async () => {
   return { ...actual, fetchGames: vi.fn() };
 });
 
-import HomePage from "@/app/page";
+// CreatePage 의존성 mock — 검색/후보 흐름 테스트에서 저장 버튼은 호출되지 않음
+vi.mock("@/modules/tournamentStorageModule", () => ({
+  tournamentStorageModule: { createTournament: vi.fn() },
+}));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: vi.fn() }),
+}));
+
+// app/page.tsx는 서버 컴포넌트(requireAuth 포함)로 교체됨 (Task #120).
+// 검색·후보 등록·중복 토스트·오류 배너 흐름은 이제 CreatePage에 위치한다.
+import { CreatePage } from "@/components/create/CreatePage";
 import { ExternalApiError, fetchGames } from "@/lib/externalApiClient";
 import { useStateStore } from "@/store/stateStore";
 import { resetSearchDurationMeasurement } from "@/modules/searchModule";
@@ -47,7 +57,7 @@ function renderHome() {
   });
   return render(
     <QueryClientProvider client={client}>
-      <HomePage />
+      <CreatePage />
     </QueryClientProvider>,
   );
 }
