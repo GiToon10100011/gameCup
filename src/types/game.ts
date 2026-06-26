@@ -36,6 +36,6 @@ export interface IApiError {
 export interface IUser {
   // Supabase가 발급하는 UUID 형식의 사용자 식별자
   id: string;
-  // 매직 링크 인증에 사용한 이메일 주소
+  // OTP 인증에 사용한 이메일 주소
   email: string;
 }
