@@ -74,8 +74,13 @@ async function createTournament(
     throw new Error(error.message);
   }
 
-  // DB row → 도메인 ITournament 정규화 후 반환
-  return toITournament(data);
+  // DB row → 도메인 ITournament 정규화
+  const tournament = toITournament(data);
+
+  // 생성된 토너먼트를 활성으로 표시 — HubPage 이동 후 바로 플레이 진입 가능하게 (UML 시퀀스)
+  useStateStore.getState().setActive(tournament);
+
+  return tournament;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -104,7 +109,12 @@ async function listMyTournaments(): Promise<ITournament[]> {
   }
 
   // 배열 전체를 도메인 ITournament[]로 정규화
-  return (data ?? []).map(toITournament);
+  const tournaments = (data ?? []).map(toITournament);
+
+  // 목록 캐시 갱신 — HubPage가 API 재호출 없이 캐시를 구독해 렌더한다 (TournamentLibrarySlice)
+  useStateStore.getState().setList(tournaments);
+
+  return tournaments;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -126,7 +136,12 @@ async function getTournament(id: string): Promise<ITournament> {
     throw new Error(error.message);
   }
 
-  return toITournament(data);
+  const tournament = toITournament(data);
+
+  // 조회된 토너먼트를 활성으로 설정 — HubPage 선택 후 플레이 진입 전 상태 (UML 시퀀스)
+  useStateStore.getState().setActive(tournament);
+
+  return tournament;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -151,6 +166,15 @@ async function deleteTournament(id: string): Promise<void> {
 
   if (error) {
     throw new Error(error.message);
+  }
+
+  // 삭제된 토너먼트를 목록 캐시에서 제거 — HubPage가 즉시 반영
+  const current = useStateStore.getState().getList();
+  useStateStore.getState().setList(current.filter((t) => t.id !== id));
+
+  // 삭제된 토너먼트가 활성 상태였으면 해제
+  if (useStateStore.getState().getActive()?.id === id) {
+    useStateStore.getState().clearActive();
   }
 }
 
