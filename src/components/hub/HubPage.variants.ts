@@ -64,21 +64,6 @@ export const hubPageVariants = tv({
       "disabled:opacity-40 disabled:cursor-not-allowed",
       "transition-colors duration-150",
     ].join(" "),
-    // 빈 상태 컨테이너 — 토너먼트 없을 때
-    emptyContainer: [
-      "flex flex-col items-center gap-4 rounded-xl",
-      "border border-[#2a2a2a] bg-[#1a1a1a] px-8 py-16 text-center",
-    ].join(" "),
-    // 빈 상태 타이틀
-    emptyTitle: "text-xl font-semibold text-white",
-    // 빈 상태 부제목
-    emptySubtitle: "text-sm text-[#888888]",
-    // 새 토너먼트 만들기 링크 — primary CTA (빈 상태)
-    createLink: [
-      "mt-2 inline-block rounded-lg px-6 py-3 text-sm font-semibold",
-      "bg-[#faff69] text-[#0a0a0a]",
-      "hover:bg-[#e6eb52] active:bg-[#e6eb52]",
-      "transition-colors duration-150",
-    ].join(" "),
+    // 빈 상태는 OnboardingEmptyState 컴포넌트에서 자체 스타일 관리 (F-18)
   },
 });
