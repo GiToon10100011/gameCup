@@ -17,7 +17,7 @@
 
 import { createBrowserSupabaseClient } from "@/lib/supabaseClient";
 import { useStateStore } from "@/store/stateStore";
-import type { IGame, ITournament, ITournamentResult } from "@/types/game";
+import type { IGame, IPublicShare, ITournament, ITournamentResult } from "@/types/game";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 내부 헬퍼 — DB row → ITournament 정규화
@@ -262,6 +262,85 @@ async function listResults(tournamentId: string): Promise<ITournamentResult[]> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 내부 헬퍼 — DB row → IPublicShare 정규화
+// ─────────────────────────────────────────────────────────────────────────────
+// WHY: public_shares 테이블의 snake_case 컬럼을 camelCase 도메인 타입으로 변환.
+// DB 내부 uuid(id)는 외부에 노출하지 않고 share_id(32자 hex 토큰)만 노출한다.
+function toIPublicShare(row: {
+  share_id: string;
+  tournament_id: string;
+  result_id: string;
+  created_at: string;
+}): IPublicShare {
+  return {
+    shareId: row.share_id,
+    tournamentId: row.tournament_id,
+    resultId: row.result_id,
+    createdAt: row.created_at,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// createPublicShare — 결과에 대한 공개 공유 링크 발급 (F-20)
+// ─────────────────────────────────────────────────────────────────────────────
+// WHY: 토너먼트 완료 후 결과를 공개 URL로 공유하기 위해 예측 불가한 32자 hex share_id를
+// DB에서 자동 발급한다. share_id가 접근 토큰 역할을 해 비로그인 방문자도 링크로 열람 가능.
+// tournament_id는 store의 activeTournament에서 가져와 API 계층 조회를 줄인다.
+async function createPublicShare(resultId: string): Promise<IPublicShare> {
+  const supabase = createBrowserSupabaseClient();
+
+  // 인증 확인 — 본인 소유 결과만 공유 생성 가능 (RLS 심층 방어 + 앱 계층 조기 실패)
+  const currentUser = useStateStore.getState().getUser();
+  if (!currentUser) {
+    throw new Error("공유 링크를 생성하려면 로그인이 필요합니다.");
+  }
+
+  // activeTournament에서 tournament_id 획득 — ResultPage 컨텍스트에서 항상 설정돼 있다
+  const activeTournament = useStateStore.getState().getActive();
+  if (!activeTournament) {
+    throw new Error("활성 토너먼트가 없습니다. 허브에서 토너먼트를 선택하세요.");
+  }
+
+  const { data, error } = await supabase
+    .from("public_shares")
+    .insert({
+      result_id: resultId,
+      tournament_id: activeTournament.id,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return toIPublicShare(data);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// getPublicResult — share_id로 공개 결과 조회 (F-20)
+// ─────────────────────────────────────────────────────────────────────────────
+// WHY: 비로그인 방문자가 공유 링크(/share/[shareId])로 접근했을 때 결과를 가져온다.
+// RLS `using (true)` 정책으로 누구나 조회 가능하며, share_id의 예측 불가성이 접근 제어 역할.
+// 인증 확인 없음 — 의도적 공개 열람 경로.
+async function getPublicResult(shareId: string): Promise<IPublicShare> {
+  const supabase = createBrowserSupabaseClient();
+
+  const { data, error } = await supabase
+    .from("public_shares")
+    .select("*")
+    // share_id(hex 토큰)로 필터 — id(uuid PK)가 아닌 공개 접근 토큰으로 조회
+    .eq("share_id", shareId)
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return toIPublicShare(data);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 모듈 객체 export — 함수형 모듈 방식 (authModule 패턴 통일)
 // ─────────────────────────────────────────────────────────────────────────────
 // WHY: 클래스 인스턴스 대신 단순 객체로 묶어 export하면 tree-shaking이 유리하고
@@ -273,4 +352,6 @@ export const tournamentStorageModule = {
   deleteTournament,
   saveResult,
   listResults,
+  createPublicShare,
+  getPublicResult,
 };
