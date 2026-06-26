@@ -41,14 +41,14 @@
 | 104 | supabaseClient.ts 초기화 (@supabase/supabase-js + @supabase/ssr) | Task | `feat/104-supabase-client` | — |
 | 105 | DB 스키마·RLS 마이그레이션 적용 | Task | `feat/105-db-schema-rls` | NF-06 |
 | 106 | AuthSlice 추가 (인증 세션 상태) | Task | `feat/106-auth-slice` | F-14 |
-| 107 | 매직 링크 로그인 | Story | `feat/107-magic-link-login` | F-14 |
+| 107 | OTP 이메일 로그인 | Story | `feat/107-magic-link-login` | F-14 |
 | 108 | authModule 구현 | Task | `feat/108-auth-module` | F-14 |
 | 109 | AuthPage 컴포넌트 | Task | `feat/109-auth-page` | F-14 |
-| 110 | /auth/callback route handler (exchangeCodeForSession) | Task | `feat/110-auth-callback` | F-14 |
+| 110 | 세션 초기화 미들웨어(Supabase SSR 쿠키 갱신) | Task | `feat/110-auth-callback` | F-14 |
 | 111 | 인증 가드 | Story | `feat/111-auth-guard` | F-15 |
 | 112 | 보호 라우트 가드 + 로그인 유도 | Task | `feat/112-route-guard` | F-15 |
 
-> ⚠️ **선행 사용자 작업:** Epic A 코드 착수 전 `docs/06-setup/supabase-setup.md`를 따라 Supabase 프로젝트 생성(매직링크 Auth·스키마·RLS) 및 `.env.local`에 URL·anon key 설정 필요.
+> ⚠️ **선행 사용자 작업:** Epic A 코드 착수 전 `docs/06-setup/supabase-setup.md`를 따라 Supabase 프로젝트 생성(OTP Auth·스키마·RLS) 및 `.env.local`에 URL·anon key 설정 필요.
 
 ---
 
