@@ -1,4 +1,4 @@
-// requireAuth (src/lib/requireAuth.ts) 단위 테스트.
+// requireAuth (src/modules/requireAuth.ts) 단위 테스트.
 // Task #112 — 서버 컴포넌트 인증 가드 검증
 //
 // 검증 범위:
@@ -9,9 +9,19 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // ─────────────────────────────────────────────────────────────────────────────
+// vi.hoisted — mock 팩토리 내부에서 참조할 변수를 호이스팅한다
+// ─────────────────────────────────────────────────────────────────────────────
+// WHY: vi.mock() 팩토리는 파일 최상단으로 호이스팅되어 실행된다.
+// 일반 const 선언은 호이스팅되지 않아 TDZ 에러가 발생할 수 있으므로
+// vi.hoisted()로 팩토리보다 먼저 실행되도록 보장한다.
+const { mockRedirect, mockGetUser } = vi.hoisted(() => ({
+  mockRedirect: vi.fn(),
+  mockGetUser: vi.fn(),
+}));
+
+// ─────────────────────────────────────────────────────────────────────────────
 // next/navigation 모킹 — redirect는 Next.js 런타임에서만 동작한다
 // ─────────────────────────────────────────────────────────────────────────────
-const mockRedirect = vi.fn();
 vi.mock("next/navigation", () => ({
   redirect: mockRedirect,
 }));
@@ -19,7 +29,6 @@ vi.mock("next/navigation", () => ({
 // ─────────────────────────────────────────────────────────────────────────────
 // createServerSupabaseClient 모킹 — 실제 Supabase 연결 없이 getUser 응답을 제어한다
 // ─────────────────────────────────────────────────────────────────────────────
-const mockGetUser = vi.fn();
 vi.mock("@/lib/supabaseClient", () => ({
   createServerSupabaseClient: vi.fn().mockResolvedValue({
     auth: { getUser: mockGetUser },
@@ -41,7 +50,7 @@ describe("requireAuth (Task #112, 서버 인증 가드)", () => {
       data: { user: { id: "uuid-001", email: "test@example.com" } },
     });
 
-    const { requireAuth } = await import("@/lib/requireAuth");
+    const { requireAuth } = await import("@/modules/requireAuth");
     const user = await requireAuth();
 
     // IUser로 정규화되어야 한다
@@ -62,7 +71,7 @@ describe("requireAuth (Task #112, 서버 인증 가드)", () => {
       throw new Error("NEXT_REDIRECT");
     });
 
-    const { requireAuth } = await import("@/lib/requireAuth");
+    const { requireAuth } = await import("@/modules/requireAuth");
 
     // redirect()의 throw가 requireAuth까지 전파된다
     await expect(requireAuth()).rejects.toThrow("NEXT_REDIRECT");
@@ -79,7 +88,7 @@ describe("requireAuth (Task #112, 서버 인증 가드)", () => {
       data: { user: { id: "uuid-002", email: null } },
     });
 
-    const { requireAuth } = await import("@/lib/requireAuth");
+    const { requireAuth } = await import("@/modules/requireAuth");
     const user = await requireAuth();
 
     expect(user).toEqual({ id: "uuid-002", email: "" });

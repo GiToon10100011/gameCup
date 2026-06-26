@@ -8,6 +8,7 @@
 //   4) getSession() 에러 시에도 isAuthInitialized가 true가 된다 (무한 로딩 방지)
 //   5) onAuthStateChange 구독이 등록되고 user 변경이 store에 반영된다
 //   6) 언마운트 시 구독이 해제된다
+//   7) isAuthInitialized false 상태에서 onAuthStateChange 이벤트는 무시된다 (race condition 방지)
 
 import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -108,7 +109,7 @@ describe("AuthProvider (Task #112, 세션 초기화)", () => {
   });
 
   // ───────────────────────────────────────────────────────────────────────────
-  // 5) onAuthStateChange 구독 등록 + user 변경 반영
+  // 5) onAuthStateChange 구독 등록 + user 변경 반영 (초기화 완료 후)
   // ───────────────────────────────────────────────────────────────────────────
   it("onAuthStateChange 구독이 등록되고 user 변경이 store에 반영된다", async () => {
     mockGetSession.mockResolvedValue(null);
@@ -126,7 +127,13 @@ describe("AuthProvider (Task #112, 세션 초기화)", () => {
     // 구독이 등록됐는지 확인
     expect(mockOnAuthStateChange).toHaveBeenCalledTimes(1);
 
-    // 외부 이벤트로 세션 변경 시뮬레이션
+    // WHY 대기: onAuthStateChange 콜백은 isAuthInitialized가 true인 후에만 처리된다.
+    // getSession() 완료 후 isAuthInitialized가 true로 전환될 때까지 기다린다.
+    await vi.waitFor(() => {
+      expect(useStateStore.getState().isAuthInitialized).toBe(true);
+    });
+
+    // 초기화 완료 후 외부 이벤트(탭 전환 등)로 세션 변경 시뮬레이션
     const newUser = mkUser("user-002");
     capturedCallback?.(newUser);
 
@@ -146,5 +153,36 @@ describe("AuthProvider (Task #112, 세션 초기화)", () => {
     unmount();
 
     expect(mockUnsubscribe).toHaveBeenCalledTimes(1);
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 7) isAuthInitialized false 중 onAuthStateChange 이벤트 무시 (race condition 방지)
+  // ───────────────────────────────────────────────────────────────────────────
+  it("isAuthInitialized false 상태에서 onAuthStateChange 이벤트는 store를 변경하지 않는다", async () => {
+    // getSession이 지연되어 아직 완료되지 않은 상황을 시뮬레이션
+    let resolveSession!: (v: null) => void;
+    mockGetSession.mockReturnValue(new Promise((res) => { resolveSession = res; }));
+
+    let capturedCallback: ((user: ReturnType<typeof mkUser> | null) => void) | undefined;
+    mockOnAuthStateChange.mockImplementation((cb) => {
+      capturedCallback = cb;
+      return mockUnsubscribe;
+    });
+
+    const { AuthProvider } = await import("@/components/auth/AuthProvider");
+    render(<AuthProvider><div /></AuthProvider>);
+
+    // 초기화 전(isAuthInitialized=false) — onAuthStateChange 이벤트 발생
+    const earlyUser = mkUser("early-user");
+    capturedCallback?.(earlyUser);
+
+    // 초기화 전이므로 currentUser는 변경되지 않아야 한다
+    expect(useStateStore.getState().currentUser).toBeNull();
+
+    // 이후 getSession 완료
+    resolveSession(null);
+    await vi.waitFor(() => {
+      expect(useStateStore.getState().isAuthInitialized).toBe(true);
+    });
   });
 });

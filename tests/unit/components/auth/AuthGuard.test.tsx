@@ -141,9 +141,16 @@ describe("AuthGuard (Task #112, 클라이언트 인증 가드)", () => {
       </AuthGuard>,
     );
 
+    // useEffect의 초기 redirect 호출이 완료될 때까지 대기한 뒤 리셋한다.
+    // 그렇지 않으면 useEffect 호출과 버튼 클릭 호출이 섞여 검증이 불명확해진다.
+    await vi.waitFor(() => expect(mockReplace).toHaveBeenCalled());
+    mockReplace.mockReset();
+
     const button = screen.getByRole("button", { name: "로그인하기" });
     fireEvent.click(button);
 
+    // 버튼 클릭으로 인한 단독 호출을 검증한다
+    expect(mockReplace).toHaveBeenCalledTimes(1);
     expect(mockReplace).toHaveBeenCalledWith("/auth");
   });
 });

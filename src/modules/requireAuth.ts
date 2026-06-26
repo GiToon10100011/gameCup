@@ -1,10 +1,17 @@
 // 서버 컴포넌트 전용 인증 가드 유틸리티 (F-15).
-// Server Component 페이지 최상단에서 호출해 비로그인 접근을 차단한다.
+// Business 계층 위치 — Server Component 페이지 최상단에서 호출해 비로그인 접근을 차단한다.
 //
-// WHY: Next.js App Router의 서버 컴포넌트는 렌더 전에 redirect()를 호출할 수 있다.
-// 이 유틸리티를 사용하면 Presentation 계층에서 auth 로직을 반복 작성할 필요가 없다.
-// 3계층 위치: Presentation 계층 보조 유틸리티 (lib/)
-//   - createServerSupabaseClient(Data) → supabase.auth.getUser()(Data) → redirect(Next.js)
+// 3계층 위치: Business (modules/)
+//   - Data 방향: src/lib/supabaseClient.ts (createServerSupabaseClient)
+//   - 이 모듈은 서버 전용이다. 클라이언트 컴포넌트에서 import하면 런타임 에러가 발생한다.
+//   TODO: server-only 패키지 도입 시 `import 'server-only'` 추가
+//         (현재 Vitest jsdom 환경에서 별도 mock 인프라가 필요해 추후 적용)
+//
+// 사용 예:
+//   export default async function ProtectedPage() {
+//     const user = await requireAuth(); // 비로그인이면 /auth로 redirect
+//     return <div>Hello, {user.email}</div>;
+//   }
 
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabaseClient";
@@ -13,8 +20,8 @@ import type { IUser } from "@/types/game";
 // ─────────────────────────────────────────────────────────────────────────────
 // 내부 헬퍼 — Supabase User → IUser 정규화
 // ─────────────────────────────────────────────────────────────────────────────
-// WHY: authModule.ts와 동일한 변환 로직을 중복하지 않도록 여기서도 별도 함수로 분리.
-// lib 간 순환 의존을 피하기 위해 authModule을 import하지 않고 직접 정의한다.
+// WHY: authModule.ts는 브라우저 전용 모듈이라 서버 컨텍스트에서 import할 수 없다.
+// 동일한 변환 로직을 여기서 독립적으로 정의해 lib 간 순환 의존을 피한다.
 function toIUser(user: { id: string; email?: string | null }): IUser {
   return { id: user.id, email: user.email ?? "" };
 }
@@ -24,12 +31,6 @@ function toIUser(user: { id: string; email?: string | null }): IUser {
 // ─────────────────────────────────────────────────────────────────────────────
 // WHY getUser(): getSession()은 로컬 쿠키를 신뢰하지만 getUser()는 Supabase Auth 서버와
 // 교신해 토큰을 검증하므로 보안상 더 안전하다 (middleware.ts와 동일한 이유).
-//
-// 사용 예:
-//   export default async function ProtectedPage() {
-//     const user = await requireAuth(); // 비로그인이면 /auth로 redirect
-//     return <div>Hello, {user.email}</div>;
-//   }
 export async function requireAuth(): Promise<IUser> {
   // 서버 컴포넌트 전용 Supabase 클라이언트 — next/headers 쿠키 어댑터 연결
   const supabase = await createServerSupabaseClient();

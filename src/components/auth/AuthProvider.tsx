@@ -31,23 +31,33 @@ export function AuthProvider({ children }: IAuthProviderProps) {
     // 마운트 해제 후 비동기 콜백이 store를 수정하지 않도록 플래그를 사용한다
     let mounted = true;
 
-    // 1) 초기 세션 복원 — 브라우저 쿠키에 저장된 세션이 있으면 currentUser를 채운다
-    authModule
-      .getSession()
-      .then((user) => {
+    // ─────────────────────────────────────────────────────────────────────────
+    // 1) 초기 세션 복원 — async IIFE로 작성해 가독성과 에러 처리를 명확히 한다.
+    //    .then()/.catch() 체인보다 제어 흐름이 직관적이다.
+    // ─────────────────────────────────────────────────────────────────────────
+    (async () => {
+      try {
+        const user = await authModule.getSession();
         if (!mounted) return;
         if (user) setUser(user);
         // 성공·null 세션 모두 초기화 완료로 처리한다
         setAuthInitialized();
-      })
-      .catch(() => {
+      } catch {
         if (!mounted) return;
         // 네트워크 오류 등 예외 시에도 초기화 완료로 표시해 무한 로딩을 막는다
         setAuthInitialized();
-      });
+      }
+    })();
 
-    // 2) 세션 변경 구독 — 탭 전환·토큰 갱신·다른 기기 로그아웃 등을 실시간 반영
+    // ─────────────────────────────────────────────────────────────────────────
+    // 2) 세션 변경 구독 — 탭 전환·토큰 갱신·다른 기기 로그아웃 등을 실시간 반영.
+    //    WHY isAuthInitialized guard: getSession()이 완료되기 전에 onAuthStateChange가
+    //    INITIAL_SESSION 이벤트를 발생시킬 수 있다. 초기화 전 이벤트는 getSession()의
+    //    결과를 덮어쓸 수 있으므로, 초기화 완료 후 이벤트만 처리한다.
+    // ─────────────────────────────────────────────────────────────────────────
     const unsubscribe = authModule.onAuthStateChange((user) => {
+      // 초기화 완료 전이면 getSession()이 진실 공급원이므로 무시한다
+      if (!useStateStore.getState().isAuthInitialized) return;
       if (user) setUser(user);
       else clearUser();
     });
