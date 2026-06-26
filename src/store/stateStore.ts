@@ -28,6 +28,10 @@ interface IStateStoreState {
   // resetAll(새 토너먼트 시작)로 초기화되지 않는다 — 플레이 데이터만 리셋하고
   // 로그인 세션은 유지해야 하기 때문 (F-13 재시작은 플레이 데이터만 리셋).
   currentUser: IUser | null;
+  // AuthProvider가 getSession()을 완료했는지 여부.
+  // false이면 세션 초기화 전이므로 AuthGuard는 "로딩 중" 상태를 보여준다.
+  // 초기화 완료 후에는 currentUser가 null이어도 비로그인 상태로 확정 처리한다.
+  isAuthInitialized: boolean;
 }
 
 // 스토어의 동작(actions) 시그니처.
@@ -55,6 +59,8 @@ interface IStateStoreActions {
   clearUser: () => void;
   // 현재 로그인 사용자 조회. 비인증 상태이면 null을 반환한다.
   getUser: () => IUser | null;
+  // AuthProvider가 getSession() 완료 후 호출해 초기화 완료를 알린다.
+  setAuthInitialized: () => void;
 }
 
 // 초기 상태 — `resetAll`에서도 동일 객체를 spread해서 깔끔하게 초기화한다.
@@ -72,6 +78,8 @@ const initialState: IStateStoreState = {
   apiError: null,
   // 스토어 최초 생성 시점(앱 로드)에 인증 정보는 아직 없으므로 null
   currentUser: null,
+  // getSession() 완료 전이므로 false — AuthProvider 마운트 후 true로 전환
+  isAuthInitialized: false,
 };
 
 // 실제 스토어 인스턴스 — 컴포넌트에서 `useStateStore()` 훅으로,
@@ -142,6 +150,8 @@ export const useStateStore = create<IStateStoreState & IStateStoreActions>((set,
       searchCache: new Map(),
       // 로그인 세션 보존 — 토너먼트를 다시 시작해도 사용자는 로그인 상태를 유지해야 함
       currentUser: state.currentUser,
+      // 초기화 완료 여부 보존 — getSession()은 앱 생애 주기 동안 한 번만 호출됨
+      isAuthInitialized: state.isAuthInitialized,
     })),
 
   // ── AuthSlice 액션 구현 (UML v2.0 §AuthSlice) ────────────────────────────
@@ -154,4 +164,9 @@ export const useStateStore = create<IStateStoreState & IStateStoreActions>((set,
 
   // 17) 현재 로그인 사용자 조회 — 비인증이면 null 반환
   getUser: () => get().currentUser,
+
+  // 18) AuthProvider가 getSession() 완료 후 호출 — 초기화 완료 표시
+  // WHY: isAuthInitialized는 한 번 true가 되면 되돌릴 필요가 없으므로 단순 set.
+  // resetAll에서도 false로 되돌리지 않는다 — 세션 상태는 이미 알려진 상태.
+  setAuthInitialized: () => set({ isAuthInitialized: true }),
 }));

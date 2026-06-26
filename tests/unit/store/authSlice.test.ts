@@ -1,5 +1,6 @@
 // `stateStore`의 AuthSlice(인증 세션 상태) 단위 테스트.
 // Task #106 — AuthSlice 추가 (인증 세션 상태)
+// Task #112 — isAuthInitialized + setAuthInitialized 추가
 //
 // 검증 범위:
 //   1) 초기 상태: currentUser가 null이다
@@ -7,6 +8,8 @@
 //   3) clearUser: 저장된 사용자를 지우면 null이 반환된다
 //   4) resetAll: 토너먼트 플레이 상태만 초기화되고 currentUser는 유지된다
 //   5) setUser → clearUser → setUser: 연속 조작이 정상 동작한다
+//   6) isAuthInitialized: 초기값 false → setAuthInitialized() 호출 후 true
+//   7) resetAll: isAuthInitialized도 유지된다
 //
 // stateStore는 외부 의존성 없는 메모리 store이므로 mock 없이 직접 호출한다.
 
@@ -114,5 +117,43 @@ describe("stateStore — AuthSlice (Task #106, 인증 세션 상태)", () => {
     useStateStore.getState().setUser(userB);
     expect(useStateStore.getState().getUser()?.id).toBe("user-005");
     expect(useStateStore.getState().getUser()?.email).toBe("b@example.com");
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 6) isAuthInitialized — 초기값 false, setAuthInitialized() 후 true
+  // ───────────────────────────────────────────────────────────────────────────
+  it("초기 상태: isAuthInitialized가 false이다", () => {
+    // AuthProvider가 getSession()을 완료하기 전까지 false여야 한다
+    expect(useStateStore.getState().isAuthInitialized).toBe(false);
+  });
+
+  it("setAuthInitialized(): 호출 후 isAuthInitialized가 true로 전환된다", () => {
+    expect(useStateStore.getState().isAuthInitialized).toBe(false);
+
+    // AuthProvider가 getSession() 완료 후 호출하는 흐름을 시뮬레이션
+    useStateStore.getState().setAuthInitialized();
+
+    expect(useStateStore.getState().isAuthInitialized).toBe(true);
+  });
+
+  it("setAuthInitialized()는 멱등성을 가진다 — 여러 번 호출해도 true 유지", () => {
+    useStateStore.getState().setAuthInitialized();
+    useStateStore.getState().setAuthInitialized();
+
+    expect(useStateStore.getState().isAuthInitialized).toBe(true);
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 7) resetAll: isAuthInitialized 유지
+  // ───────────────────────────────────────────────────────────────────────────
+  it("resetAll: isAuthInitialized는 초기화되지 않고 유지된다", () => {
+    // 초기화 완료 표시 후 새 토너먼트 시작
+    useStateStore.getState().setAuthInitialized();
+    expect(useStateStore.getState().isAuthInitialized).toBe(true);
+
+    useStateStore.getState().resetAll();
+
+    // 세션 상태는 이미 알려진 상태이므로 false로 되돌려지면 안 된다
+    expect(useStateStore.getState().isAuthInitialized).toBe(true);
   });
 });
