@@ -29,6 +29,52 @@ export interface IApiError {
   statusCode: number;
 }
 
+// 저장된 토너먼트(설문) 단위.
+// 사용자가 이름을 붙여 저장한 후보 세트이며, Supabase `tournaments` 테이블과 1:1 대응한다.
+// UML v2.0 §ITournament — F-16(생성·저장) · F-17(목록·관리) 핵심 엔티티.
+export interface ITournament {
+  // Supabase가 발급하는 UUID
+  id: string;
+  // 사용자가 붙인 토너먼트 이름 (예: "2024 최애 FPS 게임")
+  name: string;
+  // 소유 사용자의 Supabase UUID (auth.users.id와 동일)
+  ownerId: string;
+  // 이 토너먼트에 등록된 후보 게임 목록 (DB에 JSONB로 저장됨)
+  candidates: IGame[];
+  // ISO 8601 생성 시각 (Supabase가 자동 설정)
+  createdAt: string;
+}
+
+// 플레이 완료 후 저장되는 결과 이력.
+// 우승자·플레이 시각·대진 요약을 보관하며, `tournament_results` 테이블과 1:1 대응한다.
+// UML v2.0 §ITournamentResult — F-19(결과 이력 저장·조회) 핵심 엔티티.
+export interface ITournamentResult {
+  // Supabase가 발급하는 UUID
+  id: string;
+  // 결과가 속한 토너먼트 UUID
+  tournamentId: string;
+  // 최종 우승 게임
+  winner: IGame;
+  // 플레이 완료 시각 (ISO 8601)
+  playedAt: string;
+  // 대진표 요약 JSON 문자열. 선택 저장(null 가능).
+  bracketSummary: string | null;
+}
+
+// 공개 URL 공유 메타데이터.
+// shareId(32자 hex)를 접근 토큰으로 사용해 비로그인 결과 열람을 지원한다.
+// UML v2.0 §IPublicShare — F-20(결과 공유 링크) 핵심 엔티티.
+export interface IPublicShare {
+  // Supabase DB의 공유 레코드 UUID (내부 참조용)
+  shareId: string;
+  // 공유 대상 토너먼트 UUID
+  tournamentId: string;
+  // 공유 대상 결과 이력 UUID
+  resultId: string;
+  // 공유 링크 생성 시각 (ISO 8601)
+  createdAt: string;
+}
+
 // Supabase Auth 인증 사용자를 표현하는 최소 단위.
 // Supabase Session의 User 객체에서 필요한 필드만 추출해 정규화한다.
 // Presentation 계층(AuthModule)과 Business 계층 간 전달 단위로 사용되며,
