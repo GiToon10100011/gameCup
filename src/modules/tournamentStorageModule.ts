@@ -79,10 +79,89 @@ async function createTournament(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// listMyTournaments — 로그인 사용자의 토너먼트 목록 조회 (F-17)
+// ─────────────────────────────────────────────────────────────────────────────
+// WHY: RLS `owner_id = auth.uid()` 정책이 자동으로 본인 행만 반환한다.
+// 앱 계층 인증 확인은 RLS에 위임하지 않고 조기 실패로 네트워크 비용을 줄인다.
+// 최신순 정렬(created_at DESC)로 허브에서 가장 최근 토너먼트가 먼저 보인다.
+async function listMyTournaments(): Promise<ITournament[]> {
+  const supabase = createBrowserSupabaseClient();
+
+  // 인증 확인 — 비로그인 상태에서 조회 시도를 조기 차단
+  const currentUser = useStateStore.getState().getUser();
+  if (!currentUser) {
+    throw new Error("토너먼트 목록을 조회하려면 로그인이 필요합니다.");
+  }
+
+  const { data, error } = await supabase
+    .from("tournaments")
+    .select("*")
+    // 최신 생성 순 정렬 — 허브 목록에서 가장 최근 토너먼트가 상단에 위치
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  // 배열 전체를 도메인 ITournament[]로 정규화
+  return (data ?? []).map(toITournament);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// getTournament — 단건 토너먼트 조회 (F-17, HubPage에서 선택 → 플레이 진입)
+// ─────────────────────────────────────────────────────────────────────────────
+// WHY: 허브에서 특정 토너먼트를 선택하면 해당 후보 세트를 불러와 플레이를 시작해야 한다.
+// RLS가 타인의 레코드 접근을 차단하므로 소유자 검증은 DB 계층에 위임한다.
+async function getTournament(id: string): Promise<ITournament> {
+  const supabase = createBrowserSupabaseClient();
+
+  const { data, error } = await supabase
+    .from("tournaments")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  // .single()은 행이 0개이면 에러를 반환한다(RLS에 의한 타인 레코드 차단 포함).
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return toITournament(data);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// deleteTournament — 토너먼트 삭제 (F-17)
+// ─────────────────────────────────────────────────────────────────────────────
+// WHY: 허브에서 더 이상 필요 없는 토너먼트를 삭제한다.
+// DB의 ON DELETE CASCADE로 연결된 tournament_results·public_shares도 함께 삭제된다.
+// RLS `owner_id = auth.uid()` 정책이 타인의 토너먼트 삭제를 차단한다.
+async function deleteTournament(id: string): Promise<void> {
+  const supabase = createBrowserSupabaseClient();
+
+  // 인증 확인 — 비로그인 상태에서 삭제 시도를 조기 차단
+  const currentUser = useStateStore.getState().getUser();
+  if (!currentUser) {
+    throw new Error("토너먼트를 삭제하려면 로그인이 필요합니다.");
+  }
+
+  const { error } = await supabase
+    .from("tournaments")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 모듈 객체 export — 함수형 모듈 방식 (authModule 패턴 통일)
 // ─────────────────────────────────────────────────────────────────────────────
 // WHY: 클래스 인스턴스 대신 단순 객체로 묶어 export하면 tree-shaking이 유리하고
 // 테스트에서 vi.spyOn으로 특정 함수만 교체하기 쉽다.
 export const tournamentStorageModule = {
   createTournament,
+  listMyTournaments,
+  getTournament,
+  deleteTournament,
 };
