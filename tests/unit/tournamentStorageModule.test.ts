@@ -1,6 +1,7 @@
 // tournamentStorageModule (src/modules/tournamentStorageModule.ts) 단위 테스트.
 // Task #115 — createTournament (F-16) 검증
 // Task #118 — listMyTournaments·getTournament·deleteTournament (F-17) 검증
+// Task #124 — saveResult·listResults (F-19) 검증
 //
 // 검증 범위 (#115):
 //   1) 로그인 상태에서 name·candidates → Supabase insert → ITournament 반환
@@ -21,7 +22,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useStateStore } from "@/store/stateStore";
-import type { IGame, ITournament } from "@/types/game";
+import type { IGame, ITournament, ITournamentResult } from "@/types/game";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // supabaseClient 모킹 — vi.hoisted로 TDZ 방지
@@ -41,7 +42,8 @@ const {
   // 종단 mock — 각 체인의 최종 반환값을 개별 제어
   const mockSingle = vi.fn();
   const mockOrder = vi.fn();
-  const mockSelectEq = vi.fn(() => ({ single: mockSingle }));
+  // getTournament: select().eq().single() / listResults: select().eq().order()
+  const mockSelectEq = vi.fn(() => ({ single: mockSingle, order: mockOrder }));
   const mockDeleteEq = vi.fn();
 
   // select()가 반환하는 체인 — insert 체인과 직접 체인 모두 동일하게 사용
@@ -365,6 +367,149 @@ describe("tournamentStorageModule — list/get/delete (Task #118, F-17)", () => 
     const { tournamentStorageModule } = await import("@/modules/tournamentStorageModule");
     await expect(tournamentStorageModule.deleteTournament("tour-001")).rejects.toThrow(
       "RLS 차단",
+    );
+  });
+});
+
+// =============================================================================
+// Task #124 — saveResult · listResults (F-19)
+// =============================================================================
+describe("tournamentStorageModule — saveResult·listResults (Task #124, F-19)", () => {
+  // 결과 DB row 팩토리 (tournament_results 테이블 형식)
+  const mkResultRow = (overrides?: Partial<{
+    id: string; tournament_id: string; winner: IGame;
+    played_at: string; bracket_summary: string | null;
+  }>) => ({
+    id: "res-001",
+    tournament_id: "tour-001",
+    winner: mkGame("g1"),
+    played_at: "2026-06-27T01:00:00.000Z",
+    bracket_summary: null,
+    ...overrides,
+  });
+
+  beforeEach(() => {
+    useStateStore.getState().resetAll();
+    useStateStore.getState().clearUser();
+    useStateStore.setState({ isAuthInitialized: false });
+
+    mockFrom.mockClear();
+    mockInsert.mockClear();
+    mockSelect.mockClear();
+    mockSingle.mockClear();
+    mockOrder.mockClear();
+    mockSelectEq.mockClear();
+    mockDeleteEq.mockClear();
+    mockDelete.mockClear();
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 14) saveResult — 성공 경로
+  // ───────────────────────────────────────────────────────────────────────────
+  it("saveResult: 로그인 상태에서 호출 시 ITournamentResult를 반환한다", async () => {
+    useStateStore.getState().setUser(mkUser("user-001"));
+
+    const winner = mkGame("g1");
+    const row = mkResultRow({ winner, bracket_summary: null });
+    mockSingle.mockResolvedValue({ data: row, error: null });
+
+    const { tournamentStorageModule } = await import("@/modules/tournamentStorageModule");
+    const result = await tournamentStorageModule.saveResult("tour-001", winner, null);
+
+    // ITournamentResult 형태로 정규화됐는지 검증
+    expect(result).toEqual<ITournamentResult>({
+      id: "res-001",
+      tournamentId: "tour-001",
+      winner,
+      playedAt: "2026-06-27T01:00:00.000Z",
+      bracketSummary: null,
+    });
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 15) saveResult — 비로그인 에러
+  // ───────────────────────────────────────────────────────────────────────────
+  it("saveResult: 비로그인 상태 → 인증 에러 throw", async () => {
+    const { tournamentStorageModule } = await import("@/modules/tournamentStorageModule");
+
+    await expect(
+      tournamentStorageModule.saveResult("tour-001", mkGame("g1")),
+    ).rejects.toThrow("로그인이 필요합니다");
+
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 16) saveResult — Supabase 에러
+  // ───────────────────────────────────────────────────────────────────────────
+  it("saveResult: Supabase insert 실패 → 에러 메시지 throw", async () => {
+    useStateStore.getState().setUser(mkUser("user-001"));
+    mockSingle.mockResolvedValue({ data: null, error: { message: "FK 위반" } });
+
+    const { tournamentStorageModule } = await import("@/modules/tournamentStorageModule");
+    await expect(
+      tournamentStorageModule.saveResult("tour-001", mkGame("g1")),
+    ).rejects.toThrow("FK 위반");
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 17) saveResult — insert payload 검증
+  // ───────────────────────────────────────────────────────────────────────────
+  it("saveResult: insert에 tournament_id·owner_id·winner·bracket_summary가 전달된다", async () => {
+    const user = mkUser("user-002");
+    useStateStore.getState().setUser(user);
+
+    const winner = mkGame("champion");
+    const bracketSummary = '{"rounds":1}';
+    mockSingle.mockResolvedValue({
+      data: mkResultRow({ tournament_id: "tour-xyz", winner, bracket_summary: bracketSummary }),
+      error: null,
+    });
+
+    const { tournamentStorageModule } = await import("@/modules/tournamentStorageModule");
+    await tournamentStorageModule.saveResult("tour-xyz", winner, bracketSummary);
+
+    expect(mockFrom).toHaveBeenCalledWith("tournament_results");
+    expect(mockInsert).toHaveBeenCalledWith({
+      tournament_id: "tour-xyz",
+      owner_id: "user-002",
+      winner,
+      bracket_summary: bracketSummary,
+    });
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 18) listResults — 성공 경로
+  // ───────────────────────────────────────────────────────────────────────────
+  it("listResults: ITournamentResult[] 반환 (played_at DESC 정렬 확인)", async () => {
+    const rows = [
+      mkResultRow({ id: "res-002", played_at: "2026-06-27T02:00:00.000Z" }),
+      mkResultRow({ id: "res-001", played_at: "2026-06-27T01:00:00.000Z" }),
+    ];
+    mockOrder.mockResolvedValue({ data: rows, error: null });
+
+    const { tournamentStorageModule } = await import("@/modules/tournamentStorageModule");
+    const result = await tournamentStorageModule.listResults("tour-001");
+
+    // ITournamentResult[] 정규화 확인
+    expect(result).toHaveLength(2);
+    expect(result[0].id).toBe("res-002");
+    expect(result[0].tournamentId).toBe("tour-001");
+
+    // select("*").eq("tournament_id", ...).order("played_at", ...) 체인 확인
+    expect(mockSelectEq).toHaveBeenCalledWith("tournament_id", "tour-001");
+    expect(mockOrder).toHaveBeenCalledWith("played_at", { ascending: false });
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 19) listResults — Supabase 에러
+  // ───────────────────────────────────────────────────────────────────────────
+  it("listResults: Supabase 에러 → throw", async () => {
+    mockOrder.mockResolvedValue({ data: null, error: { message: "네트워크 오류" } });
+
+    const { tournamentStorageModule } = await import("@/modules/tournamentStorageModule");
+    await expect(tournamentStorageModule.listResults("tour-001")).rejects.toThrow(
+      "네트워크 오류",
     );
   });
 });
