@@ -17,7 +17,7 @@
 
 import { createBrowserSupabaseClient } from "@/lib/supabaseClient";
 import { useStateStore } from "@/store/stateStore";
-import type { IGame, ITournament } from "@/types/game";
+import type { IGame, ITournament, ITournamentResult } from "@/types/game";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 내부 헬퍼 — DB row → ITournament 정규화
@@ -37,6 +37,27 @@ function toITournament(row: {
     ownerId: row.owner_id,
     candidates: row.candidates,
     createdAt: row.created_at,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 내부 헬퍼 — DB row → ITournamentResult 정규화
+// ─────────────────────────────────────────────────────────────────────────────
+// WHY: tournament_results 테이블의 snake_case 컬럼을 camelCase 도메인 타입으로 변환해
+// Business/Presentation 계층이 DB 컬럼명에 의존하지 않도록 캡슐화한다.
+function toITournamentResult(row: {
+  id: string;
+  tournament_id: string;
+  winner: IGame;
+  played_at: string;
+  bracket_summary: string | null;
+}): ITournamentResult {
+  return {
+    id: row.id,
+    tournamentId: row.tournament_id,
+    winner: row.winner,
+    playedAt: row.played_at,
+    bracketSummary: row.bracket_summary,
   };
 }
 
@@ -179,6 +200,68 @@ async function deleteTournament(id: string): Promise<void> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// saveResult — 플레이 완료 결과(우승자·대진요약) 저장 (F-19)
+// ─────────────────────────────────────────────────────────────────────────────
+// WHY: 토너먼트 완료 시점에 ResultPage가 자동으로 호출한다. winner(IGame)는 jsonb로 저장되어
+// 나중에 이력 조회 시 전체 IGame 구조체를 그대로 복원할 수 있다.
+// RLS `owner_id = auth.uid()` 정책이 DB 수준에서 타인 데이터 저장을 차단한다.
+async function saveResult(
+  tournamentId: string,
+  winner: IGame,
+  bracketSummary: string | null = null,
+): Promise<ITournamentResult> {
+  const supabase = createBrowserSupabaseClient();
+
+  // 인증 확인 — 비로그인 상태에서 저장 시도를 조기 차단
+  const currentUser = useStateStore.getState().getUser();
+  if (!currentUser) {
+    throw new Error("결과를 저장하려면 로그인이 필요합니다.");
+  }
+
+  const { data, error } = await supabase
+    .from("tournament_results")
+    .insert({
+      tournament_id: tournamentId,
+      // RLS owner_id 정책과 일치: insert 시 현재 사용자 id 명시
+      owner_id: currentUser.id,
+      winner,
+      bracket_summary: bracketSummary,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return toITournamentResult(data);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// listResults — 특정 토너먼트의 플레이 이력 목록 조회 (F-19)
+// ─────────────────────────────────────────────────────────────────────────────
+// WHY: 토너먼트 상세 화면에서 과거 플레이 결과 이력을 최신순으로 보여준다.
+// RLS `owner_id = auth.uid()` 정책이 자동으로 본인 이력만 반환하므로
+// 앱 계층 소유자 검증을 별도로 추가하지 않는다.
+async function listResults(tournamentId: string): Promise<ITournamentResult[]> {
+  const supabase = createBrowserSupabaseClient();
+
+  const { data, error } = await supabase
+    .from("tournament_results")
+    .select("*")
+    // tournament_id로 필터 — 해당 토너먼트의 이력만 조회
+    .eq("tournament_id", tournamentId)
+    // 최신 플레이 순 정렬 — 이력 목록에서 가장 최근 결과가 상단에 위치
+    .order("played_at", { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? []).map(toITournamentResult);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 모듈 객체 export — 함수형 모듈 방식 (authModule 패턴 통일)
 // ─────────────────────────────────────────────────────────────────────────────
 // WHY: 클래스 인스턴스 대신 단순 객체로 묶어 export하면 tree-shaking이 유리하고
@@ -188,4 +271,6 @@ export const tournamentStorageModule = {
   listMyTournaments,
   getTournament,
   deleteTournament,
+  saveResult,
+  listResults,
 };
