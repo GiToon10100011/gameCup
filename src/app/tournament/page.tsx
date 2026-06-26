@@ -1,7 +1,13 @@
 // 토너먼트 진행 화면 — Phase 2에서 1:1 대결 UI(MatchCard)와 라운드 자동 진행을 조립한다.
 // 현재는 placeholder 상태이며, 실제 구현은 Story #6 통합 PR에서 다룬다.
+// F-15: requireAuth()로 비로그인 사용자의 직접 URL 접근을 차단한다.
 
-export default function TournamentPage() {
+import { requireAuth } from "@/lib/requireAuth";
+
+export default async function TournamentPage() {
+  // 비로그인 상태이면 /auth로 즉시 리다이렉트 — 이후 코드는 실행되지 않는다
+  await requireAuth();
+
   return (
     <main className="mx-auto max-w-3xl px-6 py-12">
       {/* 페이지 타이틀 */}
