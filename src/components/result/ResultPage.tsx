@@ -16,6 +16,12 @@ import { startNewTournament } from "@/modules/resultModule";
 import { resultPageVariants } from "./ResultPage.variants";
 import type { ITournamentResult } from "@/types/game";
 
+// 현재 origin을 안전하게 가져오는 헬퍼 — SSR 환경(window 미정의)에서 빈 문자열 반환
+function getOrigin(): string {
+  if (typeof window === "undefined") return "";
+  return window.location.origin;
+}
+
 export function ResultPage() {
   const router = useRouter();
   // 플레이 결과에서 읽는 상태들
@@ -24,12 +30,22 @@ export function ResultPage() {
 
   // 자동 저장 후 이력 목록
   const [results, setResults] = useState<ITournamentResult[]>([]);
+  // 방금 저장된 결과 — 공유 링크 생성 시 resultId 공급원
+  const [savedResult, setSavedResult] = useState<ITournamentResult | null>(null);
   // 저장 진행 중 여부
   const [isSaving, setIsSaving] = useState(false);
   // 저장·조회 에러
   const [saveError, setSaveError] = useState<string | null>(null);
   // StrictMode·재렌더 시 중복 저장 방지 — ref는 렌더를 유발하지 않아 안전하다
   const hasSavedRef = useRef(false);
+  // 공유 링크 (생성 후 설정)
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  // 공유 링크 생성 진행 중
+  const [isSharing, setIsSharing] = useState(false);
+  // 공유 링크 생성 에러
+  const [shareError, setShareError] = useState<string | null>(null);
+  // 복사 성공 피드백 여부
+  const [isCopied, setIsCopied] = useState(false);
 
   // 마운트 시 자동 저장 (UC-09 §기본 흐름 2: 시스템이 플레이 완료 결과를 자동 저장)
   // winner·activeTournament가 모두 설정된 경우에만 실행한다.
@@ -43,7 +59,9 @@ export function ResultPage() {
     async function saveAndLoad() {
       try {
         // F-19: 결과 저장 — tournamentId·winner·bracketSummary(미구현, null)
-        await tournamentStorageModule.saveResult(activeTournament!.id, winner!, null);
+        const saved = await tournamentStorageModule.saveResult(activeTournament!.id, winner!, null);
+        // 저장된 결과를 보관 — 공유 링크 생성 시 resultId 공급 (F-20 UC-10)
+        if (!cancelled) setSavedResult(saved);
         // 저장 직후 이력 조회 — 방금 저장한 항목이 상단에 위치한다(played_at DESC)
         const history = await tournamentStorageModule.listResults(activeTournament!.id);
         if (!cancelled) setResults(history);
@@ -61,6 +79,29 @@ export function ResultPage() {
       cancelled = true;
     };
   }, [winner, activeTournament]);
+
+  // 공유 링크 생성 — createPublicShare 호출 후 공개 URL을 화면에 표시 (F-20 UC-10 §기본흐름2)
+  const handleShare = useCallback(async () => {
+    if (!savedResult) return;
+    setIsSharing(true);
+    setShareError(null);
+    try {
+      const share = await tournamentStorageModule.createPublicShare(savedResult.id);
+      setShareUrl(`${getOrigin()}/share/${share.shareId}`);
+    } catch (e) {
+      setShareError(e instanceof Error ? e.message : "공유 링크 생성에 실패했습니다.");
+    } finally {
+      setIsSharing(false);
+    }
+  }, [savedResult]);
+
+  // URL 클립보드 복사 — 2초 후 피드백 초기화
+  const handleCopy = useCallback(async () => {
+    if (!shareUrl) return;
+    await navigator.clipboard.writeText(shareUrl);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  }, [shareUrl]);
 
   // 새 토너먼트 시작 — 플레이 데이터 초기화 후 허브로 이동
   const handleNewTournament = useCallback(() => {
@@ -125,6 +166,47 @@ export function ResultPage() {
             ))}
           </ul>
         </section>
+      )}
+
+      {/* 공유 섹션 — 저장 완료 후 표시 (F-20 UC-10) */}
+      {savedResult && (
+        <div className={styles.shareSection()}>
+          {/* 공유 링크가 아직 생성되지 않은 경우 생성 버튼 표시 */}
+          {!shareUrl && (
+            <button
+              type="button"
+              className={styles.shareButton()}
+              onClick={() => void handleShare()}
+              disabled={isSharing}
+            >
+              {isSharing ? "링크 생성 중…" : "공유 링크 생성"}
+            </button>
+          )}
+          {/* 공유 에러 */}
+          {shareError && (
+            <p role="alert" className={styles.shareErrorText()}>
+              {shareError}
+            </p>
+          )}
+          {/* 생성된 공유 URL + 복사 버튼 */}
+          {shareUrl && (
+            <div>
+              <div className={styles.shareUrlRow()}>
+                <span className={styles.shareUrlText()}>{shareUrl}</span>
+                <button
+                  type="button"
+                  className={styles.copyButton()}
+                  onClick={() => void handleCopy()}
+                >
+                  {isCopied ? "복사됨!" : "복사"}
+                </button>
+              </div>
+              {isCopied && (
+                <p className={styles.copySuccessText()}>링크가 클립보드에 복사됐습니다.</p>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
       {/* 액션 — 새 토너먼트 시작 (F-13) */}

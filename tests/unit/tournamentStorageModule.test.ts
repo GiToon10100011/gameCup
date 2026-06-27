@@ -2,6 +2,7 @@
 // Task #115 — createTournament (F-16) 검증
 // Task #118 — listMyTournaments·getTournament·deleteTournament (F-17) 검증
 // Task #124 — saveResult·listResults (F-19) 검증
+// Task #127 — createPublicShare·getPublicResult (F-20) 검증
 //
 // 검증 범위 (#115):
 //   1) 로그인 상태에서 name·candidates → Supabase insert → ITournament 반환
@@ -22,7 +23,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useStateStore } from "@/store/stateStore";
-import type { IGame, ITournament, ITournamentResult } from "@/types/game";
+import type { IGame, IPublicShare, ITournament, ITournamentResult } from "@/types/game";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // supabaseClient 모킹 — vi.hoisted로 TDZ 방지
@@ -510,6 +511,181 @@ describe("tournamentStorageModule — saveResult·listResults (Task #124, F-19)"
     const { tournamentStorageModule } = await import("@/modules/tournamentStorageModule");
     await expect(tournamentStorageModule.listResults("tour-001")).rejects.toThrow(
       "네트워크 오류",
+    );
+  });
+});
+
+// =============================================================================
+// Task #127 — createPublicShare · getPublicResult (F-20)
+// =============================================================================
+describe("tournamentStorageModule — createPublicShare·getPublicResult (Task #127, F-20)", () => {
+  // public_shares DB row 팩토리 (winner 컬럼 포함 — 마이그레이션 20260627)
+  const mkShareRow = (overrides?: Partial<{
+    share_id: string; tournament_id: string;
+    result_id: string; created_at: string; winner: IGame | null;
+  }>) => ({
+    share_id: "abcdef1234567890abcdef1234567890",
+    tournament_id: "tour-001",
+    result_id: "res-001",
+    winner: mkGame("g1"),
+    created_at: "2026-06-27T02:00:00.000Z",
+    ...overrides,
+  });
+
+  const mkTournament = (id = "tour-001") => ({
+    id,
+    name: `Tournament ${id}`,
+    ownerId: "user-001",
+    candidates: [],
+    createdAt: "2026-06-27T00:00:00.000Z",
+  });
+
+  beforeEach(() => {
+    // store 초기화 + mock 리셋
+    useStateStore.getState().resetAll();
+    useStateStore.getState().clearUser();
+    useStateStore.setState({ isAuthInitialized: false, activeTournament: null });
+
+    // mockClear는 호출 기록만 지우고 구현은 유지하므로 mockReset으로 구현까지 초기화
+    mockFrom.mockReset();
+    mockInsert.mockReset();
+    mockSelect.mockReset();
+    mockSingle.mockReset();
+    mockOrder.mockReset();
+    mockSelectEq.mockReset();
+    mockDeleteEq.mockReset();
+    mockDelete.mockReset();
+
+    // 체인 구조 재설정 — mockReset 후 반환값이 사라지므로 재연결 필요
+    mockSelectEq.mockReturnValue({ single: mockSingle, order: mockOrder });
+    mockSelect.mockReturnValue({ single: mockSingle, order: mockOrder, eq: mockSelectEq });
+    mockInsert.mockReturnValue({ select: mockSelect });
+    mockDelete.mockReturnValue({ eq: mockDeleteEq });
+    mockFrom.mockReturnValue({ insert: mockInsert, select: mockSelect, delete: mockDelete });
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 20) createPublicShare — 성공 경로
+  // ───────────────────────────────────────────────────────────────────────────
+  it("createPublicShare: 로그인·activeTournament 있으면 IPublicShare를 반환한다", async () => {
+    useStateStore.getState().setUser(mkUser("user-001"));
+    useStateStore.getState().setActive(mkTournament("tour-001"));
+
+    const row = mkShareRow();
+    mockSingle.mockResolvedValue({ data: row, error: null });
+
+    const { tournamentStorageModule } = await import("@/modules/tournamentStorageModule");
+    const result = await tournamentStorageModule.createPublicShare("res-001");
+
+    // DB row가 IPublicShare로 정규화됐는지 검증 (winner 포함)
+    expect(result).toEqual<IPublicShare>({
+      shareId: "abcdef1234567890abcdef1234567890",
+      tournamentId: "tour-001",
+      resultId: "res-001",
+      winner: mkGame("g1"),
+      createdAt: "2026-06-27T02:00:00.000Z",
+    });
+    expect(mockFrom).toHaveBeenCalledWith("public_shares");
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 21) createPublicShare — 비로그인 에러
+  // ───────────────────────────────────────────────────────────────────────────
+  it("createPublicShare: 비로그인 상태 → 인증 에러 throw (Supabase 호출 없음)", async () => {
+    // activeTournament는 있어도 currentUser가 없으면 throw
+    useStateStore.getState().setActive(mkTournament("tour-001"));
+
+    const { tournamentStorageModule } = await import("@/modules/tournamentStorageModule");
+    await expect(tournamentStorageModule.createPublicShare("res-001")).rejects.toThrow(
+      "로그인이 필요합니다",
+    );
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 22) createPublicShare — activeTournament 없음 에러
+  // ───────────────────────────────────────────────────────────────────────────
+  it("createPublicShare: activeTournament 없으면 에러 throw (Supabase 호출 없음)", async () => {
+    // 로그인 상태지만 activeTournament가 null
+    useStateStore.getState().setUser(mkUser("user-001"));
+
+    const { tournamentStorageModule } = await import("@/modules/tournamentStorageModule");
+    await expect(tournamentStorageModule.createPublicShare("res-001")).rejects.toThrow(
+      "활성 토너먼트가 없습니다",
+    );
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 23) createPublicShare — Supabase 에러
+  // ───────────────────────────────────────────────────────────────────────────
+  it("createPublicShare: Supabase insert 실패 → 에러 메시지 throw", async () => {
+    useStateStore.getState().setUser(mkUser("user-001"));
+    useStateStore.getState().setActive(mkTournament("tour-001"));
+    mockSingle.mockResolvedValue({ data: null, error: { message: "RLS 위반" } });
+
+    const { tournamentStorageModule } = await import("@/modules/tournamentStorageModule");
+    await expect(tournamentStorageModule.createPublicShare("res-001")).rejects.toThrow(
+      "RLS 위반",
+    );
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 24) createPublicShare — insert payload 검증
+  // ───────────────────────────────────────────────────────────────────────────
+  it("createPublicShare: insert에 result_id·tournament_id가 올바르게 전달된다", async () => {
+    useStateStore.getState().setUser(mkUser("user-001"));
+    useStateStore.getState().setActive(mkTournament("tour-xyz"));
+    mockSingle.mockResolvedValue({ data: mkShareRow({ tournament_id: "tour-xyz" }), error: null });
+
+    const { tournamentStorageModule } = await import("@/modules/tournamentStorageModule");
+    await tournamentStorageModule.createPublicShare("res-abc");
+
+    // from("public_shares").insert({result_id, tournament_id, winner}) 체인 검증
+    expect(mockFrom).toHaveBeenCalledWith("public_shares");
+    expect(mockInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result_id: "res-abc",
+        tournament_id: "tour-xyz",
+      }),
+    );
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 25) getPublicResult — 성공 경로 (인증 불필요)
+  // ───────────────────────────────────────────────────────────────────────────
+  it("getPublicResult: share_id로 IPublicShare를 반환한다 (비로그인 상태도 동작)", async () => {
+    // 비로그인 상태에서도 호출 가능 (RLS: using(true))
+    const row = mkShareRow({ share_id: "deadbeef0000000000000000deadbeef" });
+    // getPublicResult: select("*").eq("share_id", shareId).single()
+    //   → mockSelect → eq(mockSelectEq) → single(mockSingle)
+    mockSingle.mockResolvedValue({ data: row, error: null });
+
+    const { tournamentStorageModule } = await import("@/modules/tournamentStorageModule");
+    const result = await tournamentStorageModule.getPublicResult("deadbeef0000000000000000deadbeef");
+
+    expect(result).toEqual<IPublicShare>({
+      shareId: "deadbeef0000000000000000deadbeef",
+      tournamentId: "tour-001",
+      resultId: "res-001",
+      winner: mkGame("g1"),
+      createdAt: "2026-06-27T02:00:00.000Z",
+    });
+    // select().eq("share_id", ...) 체인 검증
+    expect(mockFrom).toHaveBeenCalledWith("public_shares");
+    expect(mockSelectEq).toHaveBeenCalledWith("share_id", "deadbeef0000000000000000deadbeef");
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 26) getPublicResult — Supabase 에러 (shareId 없음)
+  // ───────────────────────────────────────────────────────────────────────────
+  it("getPublicResult: Supabase 에러(share 없음) → throw", async () => {
+    // .single()이 행 없음 에러를 반환하는 경우
+    mockSingle.mockResolvedValue({ data: null, error: { message: "JSON object requested, multiple (or no) rows returned" } });
+
+    const { tournamentStorageModule } = await import("@/modules/tournamentStorageModule");
+    await expect(tournamentStorageModule.getPublicResult("nonexistent")).rejects.toThrow(
+      "JSON object requested",
     );
   });
 });
