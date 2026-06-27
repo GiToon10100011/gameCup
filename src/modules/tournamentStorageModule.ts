@@ -270,12 +270,14 @@ function toIPublicShare(row: {
   share_id: string;
   tournament_id: string;
   result_id: string;
+  winner?: IGame | null;
   created_at: string;
 }): IPublicShare {
   return {
     shareId: row.share_id,
     tournamentId: row.tournament_id,
     resultId: row.result_id,
+    winner: row.winner ?? null,
     createdAt: row.created_at,
   };
 }
@@ -301,11 +303,15 @@ async function createPublicShare(resultId: string): Promise<IPublicShare> {
     throw new Error("활성 토너먼트가 없습니다. 허브에서 토너먼트를 선택하세요.");
   }
 
+  // 비인증 열람을 위해 winner를 함께 저장 — tournament_results는 RLS 인증 필요
+  const currentWinner = useStateStore.getState().getWinner();
+
   const { data, error } = await supabase
     .from("public_shares")
     .insert({
       result_id: resultId,
       tournament_id: activeTournament.id,
+      winner: currentWinner,
     })
     .select()
     .single();

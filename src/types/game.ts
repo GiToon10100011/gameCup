@@ -71,6 +71,10 @@ export interface IPublicShare {
   tournamentId: string;
   // 공유 대상 결과 이력 UUID
   resultId: string;
+  // 최종 우승 게임 — 비로그인 열람을 위해 public_shares에 비정규화 저장.
+  // tournament_results는 RLS로 인증 필요하므로 공유 생성 시점에 함께 저장한다.
+  // 마이그레이션(20260627) 이전에 생성된 공유 레코드는 null일 수 있다.
+  winner: IGame | null;
   // 공유 링크 생성 시각 (ISO 8601)
   createdAt: string;
 }

@@ -519,14 +519,15 @@ describe("tournamentStorageModule — saveResult·listResults (Task #124, F-19)"
 // Task #127 — createPublicShare · getPublicResult (F-20)
 // =============================================================================
 describe("tournamentStorageModule — createPublicShare·getPublicResult (Task #127, F-20)", () => {
-  // public_shares DB row 팩토리
+  // public_shares DB row 팩토리 (winner 컬럼 포함 — 마이그레이션 20260627)
   const mkShareRow = (overrides?: Partial<{
     share_id: string; tournament_id: string;
-    result_id: string; created_at: string;
+    result_id: string; created_at: string; winner: IGame | null;
   }>) => ({
     share_id: "abcdef1234567890abcdef1234567890",
     tournament_id: "tour-001",
     result_id: "res-001",
+    winner: mkGame("g1"),
     created_at: "2026-06-27T02:00:00.000Z",
     ...overrides,
   });
@@ -576,11 +577,12 @@ describe("tournamentStorageModule — createPublicShare·getPublicResult (Task #
     const { tournamentStorageModule } = await import("@/modules/tournamentStorageModule");
     const result = await tournamentStorageModule.createPublicShare("res-001");
 
-    // DB row가 IPublicShare로 정규화됐는지 검증
+    // DB row가 IPublicShare로 정규화됐는지 검증 (winner 포함)
     expect(result).toEqual<IPublicShare>({
       shareId: "abcdef1234567890abcdef1234567890",
       tournamentId: "tour-001",
       resultId: "res-001",
+      winner: mkGame("g1"),
       createdAt: "2026-06-27T02:00:00.000Z",
     });
     expect(mockFrom).toHaveBeenCalledWith("public_shares");
@@ -639,12 +641,14 @@ describe("tournamentStorageModule — createPublicShare·getPublicResult (Task #
     const { tournamentStorageModule } = await import("@/modules/tournamentStorageModule");
     await tournamentStorageModule.createPublicShare("res-abc");
 
-    // from("public_shares").insert({result_id, tournament_id}) 체인 검증
+    // from("public_shares").insert({result_id, tournament_id, winner}) 체인 검증
     expect(mockFrom).toHaveBeenCalledWith("public_shares");
-    expect(mockInsert).toHaveBeenCalledWith({
-      result_id: "res-abc",
-      tournament_id: "tour-xyz",
-    });
+    expect(mockInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result_id: "res-abc",
+        tournament_id: "tour-xyz",
+      }),
+    );
   });
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -664,6 +668,7 @@ describe("tournamentStorageModule — createPublicShare·getPublicResult (Task #
       shareId: "deadbeef0000000000000000deadbeef",
       tournamentId: "tour-001",
       resultId: "res-001",
+      winner: mkGame("g1"),
       createdAt: "2026-06-27T02:00:00.000Z",
     });
     // select().eq("share_id", ...) 체인 검증
