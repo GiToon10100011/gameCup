@@ -2,8 +2,8 @@
 // UML v1.1 §StateStore 클래스와 1:1 매핑되며, 검색 캐시 + 후보 + 토너먼트 진행 + 결과 상태를 모두 보관한다.
 
 import { create } from "zustand";
-// IUser는 AuthSlice의 currentUser 필드 타입으로 사용 (UML v2.0 §AuthSlice)
-import type { IApiError, IGame, ITournamentPair, IUser } from "@/types/game";
+// ITournament는 TournamentLibrarySlice 필드 타입으로 사용 (UML v2.0 §TournamentLibrarySlice)
+import type { IApiError, IGame, ITournament, ITournamentPair, IUser } from "@/types/game";
 
 // 스토어가 보관하는 순수 상태 필드 (data).
 // 액션과 분리해 정의해야 `initialState` 객체로 reset 시 액션이 섞이지 않는다.
@@ -32,6 +32,13 @@ interface IStateStoreState {
   // false이면 세션 초기화 전이므로 AuthGuard는 "로딩 중" 상태를 보여준다.
   // 초기화 완료 후에는 currentUser가 null이어도 비로그인 상태로 확정 처리한다.
   isAuthInitialized: boolean;
+  // ── TournamentLibrarySlice (UML v2.0) ──────────────────────────────────────
+  // listMyTournaments() 결과 캐시. HubPage가 이 목록을 구독해 API 재호출 없이 렌더한다.
+  // resetAll(새 토너먼트 시작)로 초기화되지 않는다 — 라이브러리 상태는 플레이 데이터와 독립적.
+  myTournaments: ITournament[];
+  // 현재 선택(플레이 예정)된 토너먼트. null이면 선택 전 또는 허브로 돌아온 상태.
+  // createTournament·getTournament 성공 후 자동 설정되고, clearActive로 해제된다.
+  activeTournament: ITournament | null;
 }
 
 // 스토어의 동작(actions) 시그니처.
@@ -61,6 +68,17 @@ interface IStateStoreActions {
   getUser: () => IUser | null;
   // AuthProvider가 getSession() 완료 후 호출해 초기화 완료를 알린다.
   setAuthInitialized: () => void;
+  // ── TournamentLibrarySlice 액션 (UML v2.0 §TournamentLibrarySlice) ─────────
+  // listMyTournaments() 결과를 캐시로 저장. HubPage가 API 재호출 없이 목록을 렌더한다.
+  setList: (tournaments: ITournament[]) => void;
+  // 선택된 토너먼트를 활성으로 설정. createTournament·getTournament 성공 직후 호출.
+  setActive: (tournament: ITournament) => void;
+  // 활성 토너먼트 해제. 허브로 돌아오거나 활성 토너먼트를 삭제했을 때 호출.
+  clearActive: () => void;
+  // 현재 토너먼트 목록 캐시 조회.
+  getList: () => ITournament[];
+  // 현재 활성 토너먼트 조회. 선택 전이거나 해제됐으면 null.
+  getActive: () => ITournament | null;
 }
 
 // 초기 상태 — `resetAll`에서도 동일 객체를 spread해서 깔끔하게 초기화한다.
@@ -80,6 +98,10 @@ const initialState: IStateStoreState = {
   currentUser: null,
   // getSession() 완료 전이므로 false — AuthProvider 마운트 후 true로 전환
   isAuthInitialized: false,
+  // 앱 로드 시 목록 캐시는 비어 있다 — listMyTournaments() 호출 후 채워진다
+  myTournaments: [],
+  // 앱 로드 시 선택된 토너먼트 없음
+  activeTournament: null,
 };
 
 // 실제 스토어 인스턴스 — 컴포넌트에서 `useStateStore()` 훅으로,
@@ -152,6 +174,9 @@ export const useStateStore = create<IStateStoreState & IStateStoreActions>((set,
       currentUser: state.currentUser,
       // 초기화 완료 여부 보존 — getSession()은 앱 생애 주기 동안 한 번만 호출됨
       isAuthInitialized: state.isAuthInitialized,
+      // 라이브러리 상태 보존 — 플레이 데이터 초기화와 독립적 (F-17 목록은 세션 전반 유지)
+      myTournaments: state.myTournaments,
+      activeTournament: state.activeTournament,
     })),
 
   // ── AuthSlice 액션 구현 (UML v2.0 §AuthSlice) ────────────────────────────
@@ -169,4 +194,21 @@ export const useStateStore = create<IStateStoreState & IStateStoreActions>((set,
   // WHY: isAuthInitialized는 한 번 true가 되면 되돌릴 필요가 없으므로 단순 set.
   // resetAll에서도 false로 되돌리지 않는다 — 세션 상태는 이미 알려진 상태.
   setAuthInitialized: () => set({ isAuthInitialized: true }),
+
+  // ── TournamentLibrarySlice 액션 구현 (UML v2.0 §TournamentLibrarySlice) ────
+
+  // 19) 목록 캐시 저장 — listMyTournaments() 성공 후 호출해 HubPage 렌더에 활용
+  setList: (tournaments) => set({ myTournaments: tournaments }),
+
+  // 20) 활성 토너먼트 설정 — createTournament·getTournament 성공 직후 호출
+  setActive: (tournament) => set({ activeTournament: tournament }),
+
+  // 21) 활성 토너먼트 해제 — 허브로 돌아오거나 활성 토너먼트 삭제 시 호출
+  clearActive: () => set({ activeTournament: null }),
+
+  // 22) 목록 캐시 조회
+  getList: () => get().myTournaments,
+
+  // 23) 활성 토너먼트 조회 — 선택 전이거나 해제됐으면 null 반환
+  getActive: () => get().activeTournament,
 }));
