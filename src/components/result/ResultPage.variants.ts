@@ -53,5 +53,28 @@ export const resultPageVariants = tv({
       "border border-[#2a2a2a] bg-[#1a1a1a] px-8 py-16 text-center",
     ].join(" "),
     emptyTitle: "text-xl font-semibold text-white",
+    // 공유 섹션 (F-20 UC-10)
+    shareSection: "mb-6 flex flex-col gap-3",
+    shareButton: [
+      "w-full rounded-lg px-6 py-3.5 text-sm font-semibold",
+      "border border-[#faff69]/40 bg-transparent text-[#faff69]",
+      "hover:border-[#faff69] hover:bg-[#faff69]/10",
+      "disabled:opacity-50 disabled:cursor-not-allowed",
+      "transition-colors duration-150",
+    ].join(" "),
+    shareUrlRow: [
+      "flex items-center gap-2 rounded-lg",
+      "border border-[#2a2a2a] bg-[#0f0f0f] px-4 py-3",
+    ].join(" "),
+    shareUrlText: "flex-1 truncate text-sm text-[#cccccc] font-mono",
+    copyButton: [
+      "shrink-0 rounded-md px-3 py-1.5 text-xs font-semibold",
+      "bg-[#2a2a2a] text-white",
+      "hover:bg-[#3a3a3a]",
+      "transition-colors duration-150",
+    ].join(" "),
+    copySuccessText: "text-xs text-[#faff69]",
+    shareErrorText: "text-sm text-[#ef4444]",
+    sharingText: "text-sm text-[#888888]",
   },
 });
