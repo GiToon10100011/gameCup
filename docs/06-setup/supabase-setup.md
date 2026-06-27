@@ -59,7 +59,7 @@ GameCup의 아키텍처에서 Supabase는 **Data 계층**에 위치한다. Prese
 
 ### 4.2 `@supabase/supabase-js` · `@supabase/ssr` 설치
 
-Supabase JavaScript 클라이언트(`@supabase/supabase-js`, Auth 세션·DB 쿼리·RLS 처리)와, Next.js App Router의 서버/클라이언트 컴포넌트·라우트 핸들러에서 쿠키 기반 세션을 다루기 위한 SSR 헬퍼(`@supabase/ssr`, PKCE 흐름 지원)를 함께 설치한다.
+Supabase JavaScript 클라이언트(`@supabase/supabase-js`, Auth 세션·DB 쿼리·RLS 처리)와, Next.js App Router의 서버/클라이언트 컴포넌트·라우트 핸들러에서 쿠키 기반 세션을 다루기 위한 SSR 헬퍼(`@supabase/ssr`, SSR 쿠키 기반 세션 관리)를 함께 설치한다.
 
 ```bash
 npm install @supabase/supabase-js @supabase/ssr

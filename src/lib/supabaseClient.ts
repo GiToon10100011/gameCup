@@ -62,7 +62,7 @@ export function createBrowserSupabaseClient(): SupabaseClient {
 // 구형 get/set/remove는 deprecated + edge case 미처리 문제가 있다.
 /**
  * 서버 컴포넌트 / 라우트 핸들러용 Supabase 클라이언트를 생성해 반환한다.
- * Next.js `next/headers`의 쿠키 어댑터를 연결해 PKCE 세션 쿠키를 수립·갱신한다.
+ * Next.js `next/headers`의 쿠키 어댑터를 연결해 OTP 인증 세션 쿠키를 수립·갱신한다.
  *
  * @important 요청마다 새 클라이언트 인스턴스를 생성해야 한다. 공유 금지.
  * @important 클라이언트 컴포넌트에서 호출하지 말 것 — 서버 전용 API 사용.
