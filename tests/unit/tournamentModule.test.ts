@@ -7,6 +7,7 @@
 //   UT-08) advanceRound (1명): 우승자 확정 + isComplete === true
 //   F-06)  startTournament 가드: 후보 < 2개면 동작 안 함
 //   F-09)  부전승: 홀수 후보 시 마지막 페어가 isBye + 자동 nextRoundQueue 진출
+//   F-09b) 부전승 멀티라운드: 1라운드(부전승+일반) → advanceRound → 2라운드(결승) 자동 반영 (Task #39)
 //
 // 주의: Zustand는 불변 업데이트를 수행하므로, 상태를 읽을 때마다
 //       useStateStore.getState()를 새로 호출해야 최신 snapshot을 얻는다.
@@ -31,9 +32,11 @@ const getQueue = () => useStateStore.getState().nextRoundQueue;
 const getMatches = () => useStateStore.getState().getCurrentMatches();
 
 describe("tournamentModule (UT-06~08)", () => {
-  // 각 테스트는 반드시 깨끗한 store에서 시작해야 이전 라운드 상태가 새지 않는다
+  // 각 테스트는 반드시 깨끗한 store에서 시작해야 이전 라운드 상태가 새지 않는다.
+  // activeTournament는 resetAll에서 보존되므로(F-13 재시작 정책) 명시적으로 해제한다.
   beforeEach(() => {
     useStateStore.getState().resetAll();
+    useStateStore.getState().clearActive();
   });
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -150,6 +153,77 @@ describe("tournamentModule (UT-06~08)", () => {
   });
 
   // ───────────────────────────────────────────────────────────────────────────
+  // Task #27: activeTournament 후보 우선 — Iteration 4 허브→토너먼트 흐름
+  // ───────────────────────────────────────────────────────────────────────────
+  it("activeTournament에 후보가 있으면 store.candidates 대신 사용한다 (Task #27)", () => {
+    // store.candidates는 비어있고 activeTournament에만 후보 2개 설정
+    const tournament = {
+      id: "t1",
+      name: "허브 토너먼트",
+      ownerId: "u1",
+      candidates: [mkGame("A"), mkGame("B")],
+      createdAt: "2026-06-01T00:00:00Z",
+    };
+    useStateStore.getState().setActive(tournament);
+    // store.candidates는 0개임을 확인
+    expect(useStateStore.getState().getCandidates()).toHaveLength(0);
+
+    startTournament();
+
+    // activeTournament.candidates(2개)로 라운드가 구성돼야 한다
+    expect(useStateStore.getState().currentRound).toBe(1);
+    expect(getMatches()).toHaveLength(1);
+  });
+
+  it("activeTournament가 없으면 store.candidates로 폴백한다 (하위 호환)", () => {
+    // activeTournament 없이 store.candidates만 설정 (Sprint 1 흐름)
+    useStateStore.getState().addCandidate(mkGame("X"));
+    useStateStore.getState().addCandidate(mkGame("Y"));
+    expect(useStateStore.getState().getActive()).toBeNull();
+
+    startTournament();
+
+    expect(useStateStore.getState().currentRound).toBe(1);
+    expect(getMatches()).toHaveLength(1);
+  });
+
+  it("activeTournament가 있어도 candidates가 0개면 store.candidates로 폴백한다", () => {
+    // activeTournament 존재하지만 candidates = [] → store.candidates 2개로 폴백
+    const emptyTournament = {
+      id: "t-empty",
+      name: "빈 토너먼트",
+      ownerId: "u1",
+      candidates: [],
+      createdAt: "2026-06-01T00:00:00Z",
+    };
+    useStateStore.getState().setActive(emptyTournament);
+    useStateStore.getState().addCandidate(mkGame("P"));
+    useStateStore.getState().addCandidate(mkGame("Q"));
+
+    startTournament();
+
+    // store.candidates(2개)로 라운드가 구성돼야 한다
+    expect(useStateStore.getState().currentRound).toBe(1);
+    expect(getMatches()).toHaveLength(1);
+  });
+
+  it("이미 라운드가 진행 중이면 startTournament가 상태를 덮어쓰지 않는다 (재진입 가드)", () => {
+    // 첫 라운드를 정상 시작
+    useStateStore.getState().addCandidate(mkGame("A"));
+    useStateStore.getState().addCandidate(mkGame("B"));
+    startTournament();
+
+    const firstMatches = [...getMatches()];
+    expect(firstMatches).toHaveLength(1);
+
+    // 이미 진행 중인 상태에서 다시 호출 — 상태가 바뀌어서는 안 된다
+    startTournament();
+
+    expect(getMatches()).toEqual(firstMatches);
+    expect(useStateStore.getState().currentRound).toBe(1);
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
   // F-06: startTournament 가드 — 후보 < 2개면 동작 안 함
   // ───────────────────────────────────────────────────────────────────────────
   it("startTournament는 후보가 2개 미만이면 동작하지 않는다 (F-06)", () => {
@@ -197,5 +271,52 @@ describe("tournamentModule (UT-06~08)", () => {
     //    사용자 입력 없이 다음 라운드 큐에 합류한다는 것이 F-09의 핵심이다.
     expect(getQueue()).toHaveLength(1);
     expect(getQueue()[0].id).toBe(byePair.gameA.id);
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // F-09b: 부전승 멀티라운드 자동 반영 (Task #39)
+  // WHY: F-09는 startTournament 직후 큐 진입까지만 검증한다.
+  //      Task #39는 그 이후 — 일반 대결 완료 → advanceRound 호출 → 2라운드에
+  //      부전승 winner가 일반 winner와 함께 결승에 배치되는지 — 를 검증한다.
+  // ───────────────────────────────────────────────────────────────────────────
+  it("부전승 winner가 일반 대결 winner와 함께 다음 라운드(결승)에 자동 반영된다 (Task #39, F-09)", () => {
+    // 직접 상태를 구성: 3인 라운드 (1 일반 + 1 부전승)
+    const normalA = mkGame("normal-A");
+    const normalB = mkGame("normal-B");
+    const byeWinner = mkGame("bye-winner");
+
+    // setRoundState 후 pushToNextRound 순서 필수 (setRoundState가 큐를 초기화함)
+    useStateStore.getState().setRoundState(1, [
+      { gameA: normalA, gameB: normalB, winner: null, isBye: false },
+      { gameA: byeWinner, gameB: null, winner: byeWinner, isBye: true },
+    ]);
+    // 부전승 winner를 큐에 선적재 (startTournament·advanceRound가 하는 것과 동일)
+    useStateStore.getState().pushToNextRound(byeWinner);
+
+    // 일반 대결에서 normalA가 이김 → selectWinner → nextRoundQueue에 normalA 추가
+    const normalPair = useStateStore.getState().currentMatches[0];
+    selectWinner(normalPair, normalA);
+
+    // nextRoundQueue 상태: [byeWinner, normalA] (순서는 구현 의존이므로 id set으로 비교)
+    const queueIds = new Set(getQueue().map((g) => g.id));
+    expect(queueIds).toEqual(new Set([byeWinner.id, normalA.id]));
+
+    // advanceRound 호출 → 2명 큐 → buildPairs([byeWinner, normalA]) → 결승 1페어
+    advanceRound();
+
+    const round2Matches = useStateStore.getState().currentMatches;
+    // 결승: 1페어, 두 플레이어 모두 포함
+    expect(round2Matches).toHaveLength(1);
+    expect(round2Matches[0].isBye).toBe(false);
+
+    const round2Ids = new Set([
+      round2Matches[0].gameA.id,
+      round2Matches[0].gameB!.id,
+    ]);
+    // 부전승 winner와 일반 winner가 결승에서 만난다
+    expect(round2Ids).toEqual(new Set([byeWinner.id, normalA.id]));
+
+    // currentRound가 2로 증가했는지 확인
+    expect(useStateStore.getState().currentRound).toBe(2);
   });
 });
