@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 import { useStateStore } from "@/store/stateStore";
 import { startTournament, selectWinner } from "@/modules/tournamentModule";
 import { MatchCard } from "./MatchCard";
+import { RoundProgressIndicator } from "./RoundProgressIndicator";
 import { tournamentPageVariants } from "./TournamentPage.variants";
 import type { IGame, ITournamentPair } from "@/types/game";
 
@@ -111,12 +112,15 @@ export function TournamentPage() {
         </section>
       )}
 
-      {/* 진행 중 — MatchCard로 현재 미결 대결 표시 (Task #32) */}
+      {/* 진행 중 — 라운드 진행 표시(Task #33) + MatchCard(Task #32) */}
       {currentMatches.length > 0 && winner === null && (
         <section
           className={styles.inProgressSection()}
           aria-label="토너먼트 진행 중"
         >
+          {/* 라운드 진행 상황 표시 (Task #33) */}
+          <RoundProgressIndicator />
+
           {currentMatch ? (
             /* 미결 대결이 있으면 MatchCard 렌더 */
             <MatchCard
