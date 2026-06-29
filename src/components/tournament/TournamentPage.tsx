@@ -1,11 +1,12 @@
 "use client";
 
-// TournamentPage — 토너먼트 플레이 화면 (Task #27, F-06 시작 조건·시작 버튼).
+// TournamentPage — 토너먼트 플레이 화면 (Task #27 시작 버튼, Task #32 선택 핸들러).
 //
 // 역할:
 //   - activeTournament를 기반으로 시작하기 버튼 활성화/비활성화 관리 (Task #27)
 //   - 시작하기 클릭 → startTournament() 호출 → 첫 라운드 구성
-//   - 진행 중 상태: 대결 UI placeholder (Task #31~#40 에서 MatchCard로 교체)
+//   - 진행 중: MatchCard로 현재 미결 대결을 표시 + 선택 핸들러 배선 (Task #32)
+//   - NF-02: 선택 처리 시 store 최신 상태로 이중 선택 방지 (Task #32)
 //   - 완료 상태: winner 설정 시 /result로 전환 (Task #37에서 정교화)
 //   - activeTournament 없이 직접 URL 접근 시 허브(/)로 리다이렉트
 //
@@ -14,8 +15,11 @@
 import { useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useStateStore } from "@/store/stateStore";
-import { startTournament } from "@/modules/tournamentModule";
+import { startTournament, selectWinner } from "@/modules/tournamentModule";
+import { MatchCard } from "./MatchCard";
+import { RoundProgressIndicator } from "./RoundProgressIndicator";
 import { tournamentPageVariants } from "./TournamentPage.variants";
+import type { IGame, ITournamentPair } from "@/types/game";
 
 export function TournamentPage() {
   const router = useRouter();
@@ -57,6 +61,22 @@ export function TournamentPage() {
     startTournament();
   }, [canStart]);
 
+  // 현재 라운드의 미결 대결 — 부전승은 이미 자동 처리되므로 제외 (Task #32)
+  const currentMatch: ITournamentPair | null =
+    currentMatches.find((m) => m.winner === null && !m.isBye) ?? null;
+
+  // 게임 선택 핸들러 (Task #32, NF-02 이중 선택 방지)
+  // WHY: store를 직접 조회해 React 렌더 사이클과 무관하게 최신 winner 상태를 확인한다.
+  // 연속 클릭 시 첫 번째 selectWinner 호출로 store가 갱신되므로 두 번째 호출은 차단된다.
+  const handleSelect = useCallback((pair: ITournamentPair, game: IGame) => {
+    const latestPair = useStateStore.getState().currentMatches.find(
+      (m) => m.gameA.id === pair.gameA.id,
+    );
+    // 이미 winner가 확정된 페어 재선택 방지
+    if (!latestPair || latestPair.winner !== null) return;
+    selectWinner(pair, game);
+  }, []);
+
   // activeTournament 없으면 리다이렉트 진행 중 — 빈 화면 반환
   if (!activeTournament) return null;
 
@@ -92,15 +112,27 @@ export function TournamentPage() {
         </section>
       )}
 
-      {/* 진행 중 — Task #31~#40 에서 MatchCard·진행 표시로 교체 */}
+      {/* 진행 중 — 라운드 진행 표시(Task #33) + MatchCard(Task #32) */}
       {currentMatches.length > 0 && winner === null && (
         <section
           className={styles.inProgressSection()}
           aria-label="토너먼트 진행 중"
         >
-          <p className={styles.inProgressText()}>
-            토너먼트 진행 중… (대결 UI 구현 예정)
-          </p>
+          {/* 라운드 진행 상황 표시 (Task #33) */}
+          <RoundProgressIndicator />
+
+          {currentMatch ? (
+            /* 미결 대결이 있으면 MatchCard 렌더 */
+            <MatchCard
+              pair={currentMatch}
+              onSelect={(game) => handleSelect(currentMatch, game)}
+            />
+          ) : (
+            /* 모든 대결 완료 — Task #35에서 advanceRound() 자동 호출로 교체 */
+            <p className={styles.inProgressText()}>
+              라운드 완료, 다음 라운드 준비 중…
+            </p>
+          )}
         </section>
       )}
     </main>
