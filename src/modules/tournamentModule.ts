@@ -5,20 +5,31 @@ import { useStateStore } from "@/store/stateStore";
 import type { IGame, ITournamentPair } from "@/types/game";
 import { buildPairs } from "@/utils/buildPairs";
 import { shuffle } from "@/utils/shuffle";
-import { canStartTournament } from "@/modules/candidateModule";
 
 /**
  * 토너먼트 시작 (F-06).
  * 후보가 2개 이상일 때만 첫 라운드를 구성하고,
  * 짝이 없는 마지막 후보(부전승)는 자동으로 다음 라운드 큐에 추가한다.
+ *
+ * 후보 우선순위 (Task #27):
+ *   1) activeTournament.candidates — Iteration 4 허브→토너먼트 진입 흐름
+ *   2) store.candidates — Sprint 1 직접 검색·등록 흐름 (하위 호환 폴백)
  */
 export function startTournament(): void {
-  // 1) 시작 조건 가드 — 후보 < 2개면 무시
-  if (!canStartTournament()) return;
+  const store = useStateStore.getState();
+
+  // Iteration 4: activeTournament 후보를 우선 사용하고, 없으면 store.candidates 폴백
+  const activeTournament = store.getActive();
+  const candidates =
+    (activeTournament?.candidates?.length ?? 0) > 0
+      ? activeTournament!.candidates
+      : store.getCandidates();
+
+  // 1) 시작 조건 가드 — 후보 2개 미만이면 무시
+  if (candidates.length < 2) return;
 
   // 2) 후보를 무작위 셔플 (Fisher-Yates) → 페어 구성
-  const store = useStateStore.getState();
-  const shuffled = shuffle(store.getCandidates());
+  const shuffled = shuffle(candidates);
   const matches = buildPairs(shuffled);
 
   // 3) 첫 라운드 상태 설정
