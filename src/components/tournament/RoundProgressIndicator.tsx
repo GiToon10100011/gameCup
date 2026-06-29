@@ -1,9 +1,9 @@
 "use client";
 
-// RoundProgressIndicator — 라운드 진행 상황 표시 컴포넌트 (Task #33, F-07).
+// RoundProgressIndicator — 라운드 진행 상황 표시 컴포넌트 (Task #33/#36, F-07).
 //
 // 역할:
-//   - 현재 라운드 번호 표시 (Task #36에서 "8강"·"4강" 등 명칭으로 교체 예정)
+//   - 라운드 명칭 표시 — getRoundName(참가자 수) 기반 ("결승", "4강", "8강" 등) (Task #36)
 //   - 현재 라운드의 경기 진행 현황(N/M 경기) 표시
 //   - 시각적 진행 막대(progress bar)로 완료율 표현
 //   - 부전승(isBye) 경기는 사용자 경기 수에서 제외
@@ -11,6 +11,7 @@
 // 3계층: Presentation — store를 직접 구독(currentRound, currentMatches)
 
 import { useStateStore } from "@/store/stateStore";
+import { getRoundName } from "@/utils/roundName";
 import { roundProgressIndicatorVariants } from "./RoundProgressIndicator.variants";
 
 export function RoundProgressIndicator() {
@@ -34,12 +35,18 @@ export function RoundProgressIndicator() {
   const progressPct =
     totalMatches > 0 ? Math.round((completedMatches / totalMatches) * 100) : 0;
 
+  // 라운드 명칭 — 현재 라운드 참가자 수(부전승 포함 전체) 기반 (Task #36)
+  const playerCount = currentMatches.reduce(
+    (sum, m) => sum + (m.isBye ? 1 : 2),
+    0,
+  );
+  const roundLabel = getRoundName(playerCount);
+
   return (
     <div className={styles.root()} role="status" aria-label="라운드 진행 상황">
       {/* 라운드 레이블 + 경기 카운터 */}
       <div className={styles.infoRow()}>
-        {/* Task #36에서 라운드 명칭 유틸로 교체 예정 */}
-        <span className={styles.roundLabel()}>라운드 {currentRound}</span>
+        <span className={styles.roundLabel()}>{roundLabel}</span>
         <span className={styles.matchCounter()}>
           {currentMatchIndex}/{totalMatches} 경기
         </span>

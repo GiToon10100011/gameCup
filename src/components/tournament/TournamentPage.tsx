@@ -1,13 +1,14 @@
 "use client";
 
-// TournamentPage — 토너먼트 플레이 화면 (Task #27 시작 버튼, Task #32 선택 핸들러).
+// TournamentPage — 토너먼트 플레이 화면.
 //
 // 역할:
 //   - activeTournament를 기반으로 시작하기 버튼 활성화/비활성화 관리 (Task #27)
 //   - 시작하기 클릭 → startTournament() 호출 → 첫 라운드 구성
 //   - 진행 중: MatchCard로 현재 미결 대결을 표시 + 선택 핸들러 배선 (Task #32)
 //   - NF-02: 선택 처리 시 store 최신 상태로 이중 선택 방지 (Task #32)
-//   - 완료 상태: winner 설정 시 /result로 전환 (Task #37에서 정교화)
+//   - 라운드 내 모든 대결 완료 시 advanceRound() 자동 호출 (Task #35, F-08)
+//   - winner 확정 시 /result로 자동 전환 (Task #37)
 //   - activeTournament 없이 직접 URL 접근 시 허브(/)로 리다이렉트
 //
 // 3계층: Presentation → Business(tournamentModule) → Store(stateStore)
@@ -15,7 +16,7 @@
 import { useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useStateStore } from "@/store/stateStore";
-import { startTournament, selectWinner } from "@/modules/tournamentModule";
+import { startTournament, selectWinner, advanceRound } from "@/modules/tournamentModule";
 import { MatchCard } from "./MatchCard";
 import { RoundProgressIndicator } from "./RoundProgressIndicator";
 import { tournamentPageVariants } from "./TournamentPage.variants";
@@ -37,12 +38,25 @@ export function TournamentPage() {
     }
   }, [activeTournament, router]);
 
-  // winner 확정 시 결과 화면으로 전환 (F-10 트리거, Task #37에서 정교화)
+  // winner 확정 시 결과 화면으로 전환 (F-10)
   useEffect(() => {
     if (winner !== null) {
       router.replace("/result");
     }
   }, [winner, router]);
+
+  // 라운드 내 모든 대결 완료 시 advanceRound 자동 호출 (Task #35, F-08)
+  // WHY: currentMatches가 변경될 때마다 라운드 완료 여부를 감지한다.
+  //      advanceRound()는 nextRoundQueue를 소비해 다음 라운드를 구성하거나 우승자를 확정한다.
+  useEffect(() => {
+    const roundComplete =
+      currentMatches.length > 0 &&
+      winner === null &&
+      currentMatches.every((m) => m.winner !== null);
+    if (roundComplete) {
+      advanceRound();
+    }
+  }, [currentMatches, winner]);
 
   // 시작하기 버튼 활성화 조건 (Task #27 핵심 로직):
   //   - activeTournament 유효 (허브에서 선택 완료)
@@ -128,7 +142,7 @@ export function TournamentPage() {
               onSelect={(game) => handleSelect(currentMatch, game)}
             />
           ) : (
-            /* 모든 대결 완료 — Task #35에서 advanceRound() 자동 호출로 교체 */
+            /* 모든 대결 완료 — advanceRound useEffect가 즉시 호출되므로 실제로는 미노출 */
             <p className={styles.inProgressText()}>
               라운드 완료, 다음 라운드 준비 중…
             </p>
