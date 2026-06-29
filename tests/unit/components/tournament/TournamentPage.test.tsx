@@ -1,4 +1,4 @@
-// TournamentPage 컴포넌트 테스트 — Task #27 (시작 버튼) + Task #32 (선택 핸들러) + Task #34 (자동 전환)
+// TournamentPage 컴포넌트 테스트 — Task #27/#32/#34/#35
 //
 // 검증 범위:
 //   1) activeTournament 없을 때 허브(/)로 리다이렉트
@@ -14,6 +14,9 @@
 //  11) 모든 대결 완료(currentMatch=null) → "라운드 완료" 텍스트 표시 (Task #32)
 //  12) 첫 번째 대결 완료 → 두 번째 대결로 MatchCard 자동 전환 (Task #34)
 //  13) 부전승(isBye) 대결은 건너뛰고 다음 일반 대결로 자동 전환 (Task #34)
+//  14) 라운드 내 모든 대결 완료 시 advanceRound 자동 호출 (Task #35, F-08)
+//  15) 미결 대결 남아 있으면 advanceRound 미호출 (Task #35)
+//  16) winner 이미 확정 시 advanceRound 미호출 — 토너먼트 종료 상태 (Task #35)
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render, screen, fireEvent } from "@testing-library/react";
@@ -31,15 +34,16 @@ vi.mock("next/navigation", () => ({
 // ─────────────────────────────────────────────────────────────────────────────
 // Mock — tournamentModule (startTournament + selectWinner)
 // ─────────────────────────────────────────────────────────────────────────────
-const { mockStartTournament, mockSelectWinner } = vi.hoisted(() => ({
+const { mockStartTournament, mockSelectWinner, mockAdvanceRound } = vi.hoisted(() => ({
   mockStartTournament: vi.fn(),
   mockSelectWinner: vi.fn(),
+  mockAdvanceRound: vi.fn(),
 }));
 
 vi.mock("@/modules/tournamentModule", () => ({
   startTournament: mockStartTournament,
   selectWinner: mockSelectWinner,
-  advanceRound: vi.fn(),
+  advanceRound: mockAdvanceRound,
   isComplete: vi.fn(() => false),
 }));
 
@@ -107,6 +111,7 @@ describe("TournamentPage (Task #27, F-06)", () => {
     mockReplace.mockClear();
     mockStartTournament.mockClear();
     mockSelectWinner.mockClear();
+    mockAdvanceRound.mockClear();
   });
 
   afterEach(() => {
@@ -358,5 +363,62 @@ describe("TournamentPage (Task #27, F-06)", () => {
     // 부전승 건너뛰고 일반 대결이 즉시 MatchCard에 표시됨
     expect(screen.getByTestId("match-gameA")).toHaveTextContent("Game g1");
     expect(screen.getByTestId("match-gameB")).toHaveTextContent("Game g2");
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 14) 라운드 내 모든 대결 완료 시 advanceRound 자동 호출 (Task #35, F-08)
+  // WHY: useEffect가 currentMatches 변경을 감지해 advanceRound를 호출한다.
+  //      이 테스트는 모든 winner가 이미 설정된 상태로 렌더해 즉시 호출됨을 검증한다.
+  // ───────────────────────────────────────────────────────────────────────────
+  it("모든 대결에 winner가 설정되면 advanceRound가 자동으로 호출된다 (Task #35, F-08)", async () => {
+    useStateStore.getState().setActive(mkTournament());
+    const gameA = mkGame("g1");
+    const gameC = mkGame("g3");
+    // 모든 페어 winner 확정 — 라운드 완료 상태로 초기 렌더
+    useStateStore.getState().setRoundState(1, [
+      { gameA, gameB: mkGame("g2"), winner: gameA, isBye: false },
+      { gameA: gameC, gameB: mkGame("g4"), winner: gameC, isBye: false },
+    ]);
+
+    await renderTournamentPage();
+
+    // advanceRound가 즉시 호출돼야 한다
+    expect(mockAdvanceRound).toHaveBeenCalledOnce();
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 15) 미결 대결이 남아 있으면 advanceRound 미호출 (Task #35)
+  // ───────────────────────────────────────────────────────────────────────────
+  it("미결 대결이 남아 있으면 advanceRound가 호출되지 않는다 (Task #35)", async () => {
+    useStateStore.getState().setActive(mkTournament());
+    const gameA = mkGame("g1");
+    // 첫 번째 페어 완료, 두 번째 페어 미결 — 라운드 아직 진행 중
+    useStateStore.getState().setRoundState(1, [
+      { gameA, gameB: mkGame("g2"), winner: gameA, isBye: false },
+      { gameA: mkGame("g3"), gameB: mkGame("g4"), winner: null, isBye: false },
+    ]);
+
+    await renderTournamentPage();
+
+    expect(mockAdvanceRound).not.toHaveBeenCalled();
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 16) winner 이미 확정 시 advanceRound 미호출 — 토너먼트 종료 상태 (Task #35)
+  // WHY: 우승자가 확정된 상태(F-10)에서는 advanceRound 조건에 winner === null이
+  //      걸려 있으므로 호출돼선 안 된다.
+  // ───────────────────────────────────────────────────────────────────────────
+  it("tournament winner가 이미 확정된 상태에서는 advanceRound가 호출되지 않는다 (Task #35)", async () => {
+    useStateStore.getState().setActive(mkTournament());
+    const gameA = mkGame("g1");
+    useStateStore.getState().setRoundState(1, [
+      { gameA, gameB: mkGame("g2"), winner: gameA, isBye: false },
+    ]);
+    // 토너먼트 우승자 확정
+    useStateStore.getState().setWinner(gameA);
+
+    await renderTournamentPage();
+
+    expect(mockAdvanceRound).not.toHaveBeenCalled();
   });
 });
