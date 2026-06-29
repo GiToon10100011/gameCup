@@ -204,4 +204,31 @@ describe("HubPage 통합 (Task #120)", () => {
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("목록 조회 실패");
   });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 8) 시작하기 클릭 시 이전 플레이 상태(winner) 초기화 — Task #30 화면 전환 방어
+  // ───────────────────────────────────────────────────────────────────────────
+  it("시작하기 클릭 성공 시 이전 세션의 winner가 초기화된다 (TournamentPage /result 튕김 방어)", async () => {
+    const tournament = mkTournament("t1", "내 첫 토너먼트");
+    useStateStore.setState({ myTournaments: [tournament] });
+    mockGetTournament.mockResolvedValue(tournament);
+
+    // 이전 세션에서 winner가 남아있는 상태를 시뮬레이션
+    const { setWinner } = useStateStore.getState();
+    setWinner(mkGame("prev-champ"));
+    expect(useStateStore.getState().winner).not.toBeNull();
+
+    await renderHub();
+    await waitFor(() =>
+      expect(screen.queryByText("목록을 불러오는 중…")).not.toBeInTheDocument(),
+    );
+
+    // 시작하기 클릭
+    fireEvent.click(screen.getByRole("button", { name: "시작하기" }));
+
+    // getTournament 완료 후 winner가 null이어야 한다 (resetAll 호출 확인)
+    await waitFor(() => expect(useStateStore.getState().winner).toBeNull());
+    // /tournament로 이동했어야 한다
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/tournament"));
+  });
 });

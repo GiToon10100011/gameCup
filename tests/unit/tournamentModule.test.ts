@@ -31,9 +31,11 @@ const getQueue = () => useStateStore.getState().nextRoundQueue;
 const getMatches = () => useStateStore.getState().getCurrentMatches();
 
 describe("tournamentModule (UT-06~08)", () => {
-  // 각 테스트는 반드시 깨끗한 store에서 시작해야 이전 라운드 상태가 새지 않는다
+  // 각 테스트는 반드시 깨끗한 store에서 시작해야 이전 라운드 상태가 새지 않는다.
+  // activeTournament는 resetAll에서 보존되므로(F-13 재시작 정책) 명시적으로 해제한다.
   beforeEach(() => {
     useStateStore.getState().resetAll();
+    useStateStore.getState().clearActive();
   });
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -147,6 +149,77 @@ describe("tournamentModule (UT-06~08)", () => {
 
     // 2) isComplete()가 true가 되어야 한다 (UI 화면 전환 트리거)
     expect(isComplete()).toBe(true);
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Task #27: activeTournament 후보 우선 — Iteration 4 허브→토너먼트 흐름
+  // ───────────────────────────────────────────────────────────────────────────
+  it("activeTournament에 후보가 있으면 store.candidates 대신 사용한다 (Task #27)", () => {
+    // store.candidates는 비어있고 activeTournament에만 후보 2개 설정
+    const tournament = {
+      id: "t1",
+      name: "허브 토너먼트",
+      ownerId: "u1",
+      candidates: [mkGame("A"), mkGame("B")],
+      createdAt: "2026-06-01T00:00:00Z",
+    };
+    useStateStore.getState().setActive(tournament);
+    // store.candidates는 0개임을 확인
+    expect(useStateStore.getState().getCandidates()).toHaveLength(0);
+
+    startTournament();
+
+    // activeTournament.candidates(2개)로 라운드가 구성돼야 한다
+    expect(useStateStore.getState().currentRound).toBe(1);
+    expect(getMatches()).toHaveLength(1);
+  });
+
+  it("activeTournament가 없으면 store.candidates로 폴백한다 (하위 호환)", () => {
+    // activeTournament 없이 store.candidates만 설정 (Sprint 1 흐름)
+    useStateStore.getState().addCandidate(mkGame("X"));
+    useStateStore.getState().addCandidate(mkGame("Y"));
+    expect(useStateStore.getState().getActive()).toBeNull();
+
+    startTournament();
+
+    expect(useStateStore.getState().currentRound).toBe(1);
+    expect(getMatches()).toHaveLength(1);
+  });
+
+  it("activeTournament가 있어도 candidates가 0개면 store.candidates로 폴백한다", () => {
+    // activeTournament 존재하지만 candidates = [] → store.candidates 2개로 폴백
+    const emptyTournament = {
+      id: "t-empty",
+      name: "빈 토너먼트",
+      ownerId: "u1",
+      candidates: [],
+      createdAt: "2026-06-01T00:00:00Z",
+    };
+    useStateStore.getState().setActive(emptyTournament);
+    useStateStore.getState().addCandidate(mkGame("P"));
+    useStateStore.getState().addCandidate(mkGame("Q"));
+
+    startTournament();
+
+    // store.candidates(2개)로 라운드가 구성돼야 한다
+    expect(useStateStore.getState().currentRound).toBe(1);
+    expect(getMatches()).toHaveLength(1);
+  });
+
+  it("이미 라운드가 진행 중이면 startTournament가 상태를 덮어쓰지 않는다 (재진입 가드)", () => {
+    // 첫 라운드를 정상 시작
+    useStateStore.getState().addCandidate(mkGame("A"));
+    useStateStore.getState().addCandidate(mkGame("B"));
+    startTournament();
+
+    const firstMatches = [...getMatches()];
+    expect(firstMatches).toHaveLength(1);
+
+    // 이미 진행 중인 상태에서 다시 호출 — 상태가 바뀌어서는 안 된다
+    startTournament();
+
+    expect(getMatches()).toEqual(firstMatches);
+    expect(useStateStore.getState().currentRound).toBe(1);
   });
 
   // ───────────────────────────────────────────────────────────────────────────

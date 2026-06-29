@@ -144,9 +144,9 @@ describe("CreatePage (Task #116, 토너먼트 생성)", () => {
   });
 
   // ───────────────────────────────────────────────────────────────────────────
-  // 4) 저장 성공 → createTournament 호출 + router.replace('/')
+  // 4) 저장 성공 → createTournament 호출 + router.replace('/tournament') (Task #30)
   // ───────────────────────────────────────────────────────────────────────────
-  it("저장 버튼 클릭 시 createTournament가 호출되고 성공 시 '/'로 이동한다", async () => {
+  it("저장 버튼 클릭 시 createTournament가 호출되고 성공 시 '/tournament'로 이동한다", async () => {
     const g1 = mkGame("g1");
     const g2 = mkGame("g2");
     useStateStore.getState().addCandidate(g1);
@@ -174,9 +174,42 @@ describe("CreatePage (Task #116, 토너먼트 생성)", () => {
       expect(mockCreateTournament).toHaveBeenCalledWith("내 토너먼트", [g1, g2]);
     });
 
-    // 성공 시 허브(/) 이동 검증
+    // 성공 시 토너먼트 화면으로 직행 (Task #30)
     await vi.waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith("/");
+      expect(mockReplace).toHaveBeenCalledWith("/tournament");
+    });
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 8) 저장 성공 시 이전 플레이 상태(winner) 초기화 — Task #30 화면 전환 방어
+  // ───────────────────────────────────────────────────────────────────────────
+  it("저장 성공 후 이전 세션의 winner가 초기화된다 (TournamentPage /result 튕김 방어)", async () => {
+    const g1 = mkGame("g1");
+    const g2 = mkGame("g2");
+    useStateStore.getState().addCandidate(g1);
+    useStateStore.getState().addCandidate(g2);
+
+    // 이전 세션에서 winner가 남아있는 상태를 시뮬레이션
+    useStateStore.getState().setWinner(mkGame("prev-champ"));
+    expect(useStateStore.getState().winner).not.toBeNull();
+
+    mockCreateTournament.mockResolvedValue({
+      id: "tour-001",
+      name: "내 토너먼트",
+      ownerId: "user-001",
+      candidates: [g1, g2],
+      createdAt: "2026-06-27T00:00:00.000Z",
+    });
+
+    renderCreatePage();
+
+    const nameInput = screen.getByLabelText("토너먼트 이름");
+    fireEvent.change(nameInput, { target: { value: "내 토너먼트" } });
+    fireEvent.click(screen.getByRole("button", { name: "토너먼트 저장" }));
+
+    // 저장 완료 후 winner가 null이어야 한다 (resetAll 호출 확인)
+    await vi.waitFor(() => {
+      expect(useStateStore.getState().winner).toBeNull();
     });
   });
 

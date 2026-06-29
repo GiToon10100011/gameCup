@@ -22,6 +22,7 @@ import { useSearchQuery } from "@/hooks/useSearchQuery";
 import { useCandidates } from "@/hooks/useCandidates";
 import { addToPool } from "@/modules/candidateModule";
 import { tournamentStorageModule } from "@/modules/tournamentStorageModule";
+import { useStateStore } from "@/store/stateStore";
 import { createPageVariants } from "./CreatePage.variants";
 import type { IGame } from "@/types/game";
 
@@ -84,9 +85,7 @@ export function CreatePage() {
     candidates.length >= 2 &&
     !isSaving;
 
-  // createTournament 호출 → 성공 시 허브(/)로 이동
-  // WHY: HubPage(Task #120)가 구현되면 /hub로 교체. 현재는 메인(/)로 이동해
-  // 사용자가 정상 흐름을 확인할 수 있게 한다.
+  // createTournament 호출 → 성공 시 토너먼트 화면으로 직행 (Task #30)
   const handleSave = useCallback(async () => {
     if (!canSave) return;
     setIsSaving(true);
@@ -96,8 +95,10 @@ export function CreatePage() {
         tournamentName.trim(),
         candidates,
       );
-      // 저장 성공 → 허브(메인)로 이동
-      router.replace("/");
+      // 저장 성공 → 이전 플레이 상태(winner·currentMatches 등) 초기화 후 토너먼트 화면으로 전환.
+      // resetAll은 activeTournament를 보존(F-13)하므로 createTournament가 setActive한 값이 유지된다.
+      useStateStore.getState().resetAll();
+      router.replace("/tournament");
     } catch (err) {
       setSaveError(
         err instanceof Error ? err.message : "저장 중 오류가 발생했습니다.",
