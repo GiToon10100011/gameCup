@@ -186,6 +186,42 @@ describe("tournamentModule (UT-06~08)", () => {
     expect(getMatches()).toHaveLength(1);
   });
 
+  it("activeTournament가 있어도 candidates가 0개면 store.candidates로 폴백한다", () => {
+    // activeTournament 존재하지만 candidates = [] → store.candidates 2개로 폴백
+    const emptyTournament = {
+      id: "t-empty",
+      name: "빈 토너먼트",
+      ownerId: "u1",
+      candidates: [],
+      createdAt: "2026-06-01T00:00:00Z",
+    };
+    useStateStore.getState().setActive(emptyTournament);
+    useStateStore.getState().addCandidate(mkGame("P"));
+    useStateStore.getState().addCandidate(mkGame("Q"));
+
+    startTournament();
+
+    // store.candidates(2개)로 라운드가 구성돼야 한다
+    expect(useStateStore.getState().currentRound).toBe(1);
+    expect(getMatches()).toHaveLength(1);
+  });
+
+  it("이미 라운드가 진행 중이면 startTournament가 상태를 덮어쓰지 않는다 (재진입 가드)", () => {
+    // 첫 라운드를 정상 시작
+    useStateStore.getState().addCandidate(mkGame("A"));
+    useStateStore.getState().addCandidate(mkGame("B"));
+    startTournament();
+
+    const firstMatches = [...getMatches()];
+    expect(firstMatches).toHaveLength(1);
+
+    // 이미 진행 중인 상태에서 다시 호출 — 상태가 바뀌어서는 안 된다
+    startTournament();
+
+    expect(getMatches()).toEqual(firstMatches);
+    expect(useStateStore.getState().currentRound).toBe(1);
+  });
+
   // ───────────────────────────────────────────────────────────────────────────
   // F-06: startTournament 가드 — 후보 < 2개면 동작 안 함
   // ───────────────────────────────────────────────────────────────────────────

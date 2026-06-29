@@ -155,4 +155,17 @@ describe("TournamentPage (Task #27, F-06)", () => {
     expect(btn).toBeDisabled();
     expect(screen.getByText("후보가 2개 이상 필요합니다.")).toBeInTheDocument();
   });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 7) 후보 정확히 1개 → 버튼 disabled + 경고 문구 (경계값 검증)
+  // ───────────────────────────────────────────────────────────────────────────
+  it("후보가 정확히 1개인 activeTournament는 버튼을 disabled로 표시하고 경고 문구를 노출한다", async () => {
+    useStateStore.getState().setActive(mkTournament({ candidates: [mkGame("only")] }));
+
+    await renderTournamentPage();
+
+    const btn = screen.getByRole("button", { name: "토너먼트 시작하기" });
+    expect(btn).toBeDisabled();
+    expect(screen.getByText("후보가 2개 이상 필요합니다.")).toBeInTheDocument();
+  });
 });

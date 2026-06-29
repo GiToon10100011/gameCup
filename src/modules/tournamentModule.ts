@@ -18,6 +18,10 @@ import { shuffle } from "@/utils/shuffle";
 export function startTournament(): void {
   const store = useStateStore.getState();
 
+  // 재진입 가드 — 이미 라운드가 진행 중이거나 우승자가 확정됐으면 상태를 덮어쓰지 않는다.
+  // UI canStart도 동일하게 막지만, Business 계층에서도 이중으로 보호한다.
+  if (store.currentMatches.length > 0 || store.winner !== null) return;
+
   // Iteration 4: activeTournament 후보를 우선 사용하고, 없으면 store.candidates 폴백
   const activeTournament = store.getActive();
   const candidates =
