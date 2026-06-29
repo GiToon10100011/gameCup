@@ -56,13 +56,17 @@ export function HubPage() {
     };
   }, []);
 
-  // 시작하기 — getTournament로 후보를 불러와 activeTournament에 설정 후 /tournament로 이동
+  // 시작하기 — getTournament로 후보를 불러와 activeTournament에 설정 후 /tournament로 이동.
+  // resetAll로 이전 플레이 세션 상태(winner·currentMatches 등)를 초기화해 TournamentPage가
+  // 이전 winner를 감지해 /result로 튕기지 않도록 방어한다 (Task #30).
   const handlePlay = useCallback(
     async (id: string) => {
       setSelectingId(id);
       setError(null);
       try {
         await tournamentStorageModule.getTournament(id);
+        // activeTournament를 보존(F-13)하면서 play state만 초기화
+        useStateStore.getState().resetAll();
         router.push("/tournament");
       } catch (e) {
         setError(e instanceof Error ? e.message : "토너먼트 불러오기에 실패했습니다.");
