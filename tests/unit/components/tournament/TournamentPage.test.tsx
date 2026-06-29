@@ -1,4 +1,4 @@
-// TournamentPage 컴포넌트 테스트 — Task #27 (시작 버튼) + Task #32 (선택 핸들러)
+// TournamentPage 컴포넌트 테스트 — Task #27 (시작 버튼) + Task #32 (선택 핸들러) + Task #34 (자동 전환)
 //
 // 검증 범위:
 //   1) activeTournament 없을 때 허브(/)로 리다이렉트
@@ -12,9 +12,11 @@
 //   9) MatchCard 선택 → selectWinner 호출 (Task #32)
 //  10) 이중 선택 방지 — winner 확정 후 재호출 차단 (NF-02, Task #32)
 //  11) 모든 대결 완료(currentMatch=null) → "라운드 완료" 텍스트 표시 (Task #32)
+//  12) 첫 번째 대결 완료 → 두 번째 대결로 MatchCard 자동 전환 (Task #34)
+//  13) 부전승(isBye) 대결은 건너뛰고 다음 일반 대결로 자동 전환 (Task #34)
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, fireEvent } from "@testing-library/react";
+import { act, cleanup, render, screen, fireEvent } from "@testing-library/react";
 import { useStateStore } from "@/store/stateStore";
 import type { ITournament, IGame, ITournamentPair } from "@/types/game";
 
@@ -39,6 +41,14 @@ vi.mock("@/modules/tournamentModule", () => ({
   selectWinner: mockSelectWinner,
   advanceRound: vi.fn(),
   isComplete: vi.fn(() => false),
+}));
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Mock — RoundProgressIndicator (Task #33 — 자체 테스트 파일에서 검증)
+// WHY: TournamentPage 테스트 범위를 자동 전환 로직에 집중하기 위해 단순화
+// ─────────────────────────────────────────────────────────────────────────────
+vi.mock("@/components/tournament/RoundProgressIndicator", () => ({
+  RoundProgressIndicator: () => <div data-testid="round-progress-indicator" />,
 }));
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -280,5 +290,73 @@ describe("TournamentPage (Task #27, F-06)", () => {
 
     expect(screen.getByText("라운드 완료, 다음 라운드 준비 중…")).toBeInTheDocument();
     expect(screen.queryByTestId("match-card")).toBeNull();
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 12) 첫 번째 대결 완료 → 두 번째 대결로 MatchCard 자동 전환 (Task #34)
+  // WHY: Zustand 구독으로 currentMatches 변경 시 currentMatch가 재계산된다.
+  //      이 테스트는 store 직접 업데이트로 selectWinner 효과를 시뮬레이션해
+  //      컴포넌트가 올바르게 전환되는지 검증한다.
+  // ───────────────────────────────────────────────────────────────────────────
+  it("첫 번째 대결 완료 후 두 번째 대결로 MatchCard가 자동 전환된다 (Task #34)", async () => {
+    useStateStore.getState().setActive(mkTournament());
+    const pair1: ITournamentPair = {
+      gameA: mkGame("g1"),
+      gameB: mkGame("g2"),
+      winner: null,
+      isBye: false,
+    };
+    const pair2: ITournamentPair = {
+      gameA: mkGame("g3"),
+      gameB: mkGame("g4"),
+      winner: null,
+      isBye: false,
+    };
+    useStateStore.getState().setRoundState(1, [pair1, pair2]);
+
+    await renderTournamentPage();
+
+    // 초기: pair1이 MatchCard에 표시됨
+    expect(screen.getByTestId("match-gameA")).toHaveTextContent("Game g1");
+    expect(screen.getByTestId("match-gameB")).toHaveTextContent("Game g2");
+
+    // pair1 winner 확정 — selectWinner가 실행한 것과 동일한 store 변화를 직접 반영
+    act(() => {
+      useStateStore.getState().setRoundState(1, [
+        { ...pair1, winner: pair1.gameA },
+        pair2,
+      ]);
+    });
+
+    // pair2로 자동 전환 확인
+    expect(screen.getByTestId("match-gameA")).toHaveTextContent("Game g3");
+    expect(screen.getByTestId("match-gameB")).toHaveTextContent("Game g4");
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 13) 부전승(isBye) 대결은 건너뛰고 다음 일반 대결로 자동 전환 (Task #34)
+  // WHY: isBye 페어는 winner가 이미 설정돼 있으므로 currentMatch 탐색에서 제외된다.
+  //      일반 대결이 먼저 표시되고, 부전승은 경기 카운트에도 포함되지 않는다.
+  // ───────────────────────────────────────────────────────────────────────────
+  it("부전승 대결은 자동으로 건너뛰고 첫 번째 일반 대결이 MatchCard에 표시된다 (Task #34)", async () => {
+    useStateStore.getState().setActive(mkTournament());
+    const byeGame = mkGame("z");
+    const normalPair: ITournamentPair = {
+      gameA: mkGame("g1"),
+      gameB: mkGame("g2"),
+      winner: null,
+      isBye: false,
+    };
+    // 부전승이 먼저, 일반 대결이 두 번째
+    useStateStore.getState().setRoundState(1, [
+      { gameA: byeGame, gameB: null, winner: byeGame, isBye: true },
+      normalPair,
+    ]);
+
+    await renderTournamentPage();
+
+    // 부전승 건너뛰고 일반 대결이 즉시 MatchCard에 표시됨
+    expect(screen.getByTestId("match-gameA")).toHaveTextContent("Game g1");
+    expect(screen.getByTestId("match-gameB")).toHaveTextContent("Game g2");
   });
 });
