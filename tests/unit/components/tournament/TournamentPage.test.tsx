@@ -1,4 +1,4 @@
-// TournamentPage 컴포넌트 테스트 — Task #27/#32/#34/#35
+// TournamentPage 컴포넌트 테스트 — Task #27/#32/#34/#35/#38
 //
 // 검증 범위:
 //   1) activeTournament 없을 때 허브(/)로 리다이렉트
@@ -17,6 +17,7 @@
 //  14) 라운드 내 모든 대결 완료 시 advanceRound 자동 호출 (Task #35, F-08)
 //  15) 미결 대결 남아 있으면 advanceRound 미호출 (Task #35)
 //  16) winner 이미 확정 시 advanceRound 미호출 — 토너먼트 종료 상태 (Task #35)
+//  17) 부전승만 있는 라운드는 즉시 advanceRound 자동 호출 (Task #38, F-09)
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render, screen, fireEvent } from "@testing-library/react";
@@ -420,5 +421,25 @@ describe("TournamentPage (Task #27, F-06)", () => {
     await renderTournamentPage();
 
     expect(mockAdvanceRound).not.toHaveBeenCalled();
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 17) 부전승 페어만 있는 라운드 → roundComplete 즉시 → advanceRound 자동 호출 (Task #38, F-09)
+  // WHY: 부전승 페어는 처음부터 winner가 설정돼 있으므로, 사용자 입력 없이 라운드 완료 조건
+  //      (currentMatches.every(m => m.winner !== null))이 충족된다. advanceRound가
+  //      즉시 호출되는지 검증한다.
+  // ───────────────────────────────────────────────────────────────────────────
+  it("부전승 페어만 있는 라운드에서는 즉시 advanceRound가 자동 호출된다 (Task #38, F-09)", async () => {
+    useStateStore.getState().setActive(mkTournament());
+    const byeGame = mkGame("only");
+    // 부전승 페어 1개만 있는 라운드 — winner가 이미 설정돼 있음
+    useStateStore.getState().setRoundState(1, [
+      { gameA: byeGame, gameB: null, winner: byeGame, isBye: true },
+    ]);
+
+    await renderTournamentPage();
+
+    // roundComplete 조건 충족 → advanceRound 즉시 호출
+    expect(mockAdvanceRound).toHaveBeenCalledOnce();
   });
 });
