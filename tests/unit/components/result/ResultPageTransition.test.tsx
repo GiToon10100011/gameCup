@@ -60,7 +60,7 @@ const mkTournament = (id = "tour-001"): ITournament => ({
   candidates: [mkGame("g1"), mkGame("g2")],
   createdAt: "2026-06-30T00:00:00Z",
 });
-const mkUser = (): IUser => ({ id: "u-1", email: "test@test.com", createdAt: "2026-06-30T00:00:00Z" });
+const mkUser = (): IUser => ({ id: "u-1", email: "test@test.com" });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 렌더 헬퍼 — resultModule을 모킹하지 않으므로 실제 startNewTournament가 실행됨
