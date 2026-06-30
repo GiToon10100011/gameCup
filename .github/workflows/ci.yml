@@ -17,10 +17,10 @@ jobs:
     env:
       HUSKY: 0
       # CI 빌드용 스텁 환경 변수 — 실제 키가 아님. 빌드 단계에서 env 가드 통과용.
+      # NEXT_PUBLIC_RAWG_BASE_URL은 next.config.mjs에 기본값 내장 → CI 불필요.
       NEXT_PUBLIC_SUPABASE_URL: https://stub-project.supabase.co
       NEXT_PUBLIC_SUPABASE_ANON_KEY: stub_anon_key_for_ci_build_only
       NEXT_PUBLIC_RAWG_KEY: stub_rawg_key_for_ci_build_only
-      NEXT_PUBLIC_RAWG_BASE_URL: https://api.rawg.io/api
     steps:
       - name: Checkout
         uses: actions/checkout@v4
