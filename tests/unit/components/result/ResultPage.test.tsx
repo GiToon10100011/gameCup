@@ -1,4 +1,4 @@
-// ResultPage 통합 테스트 — Task #125 (F-19, UC-09) + Task #43 (F-10, 썸네일·축하 문구)
+// ResultPage 통합 테스트 — Task #125 (F-19, UC-09) + Task #43 (F-10, 썸네일·축하 문구) + Task #44 (F-10, 진입 조건·데이터 전달)
 //
 // 검증 범위:
 //   1) winner·activeTournament 없음 → 빈 상태 "표시할 결과가 없어요." 표시
@@ -11,6 +11,8 @@
 //   8) thumbnailUrl 있으면 img 렌더 (Task #43, F-10)
 //   9) thumbnailUrl 없으면 img 미렌더 (Task #43, F-10)
 //  10) 축하 문구 "GameCup 챔피언!" 표시 (Task #43, F-10)
+//  11) winner만 있고 activeTournament 없으면 빈 상태 표시 (Task #44, F-10 진입 조건)
+//  12) activeTournament 이름이 결과 화면 부제목에 표시된다 (Task #44, F-10 데이터 전달)
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -249,5 +251,43 @@ describe("ResultPage 통합 (Task #125)", () => {
     await waitFor(() => expect(mockSaveResult).toHaveBeenCalled());
 
     expect(screen.getByText(/GameCup 챔피언/)).toBeInTheDocument();
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 11) 진입 조건 — winner만 있고 activeTournament 없으면 빈 상태 (Task #44, F-10)
+  // WHY: 결과 화면은 winner와 activeTournament가 모두 있을 때만 정상 렌더된다.
+  //      둘 중 하나라도 없으면 빈 상태(안내 메시지 + 허브 버튼)를 표시해 깨진 UI 방지.
+  // ───────────────────────────────────────────────────────────────────────────
+  it("winner만 있고 activeTournament 없으면 빈 상태가 표시된다 (Task #44, F-10 진입 조건)", async () => {
+    // winner는 설정, activeTournament는 null
+    useStateStore.getState().setWinner(mkGame("champ", "챔피언 게임"));
+    // activeTournament는 초기화 상태 유지(null)
+
+    await renderResultPage();
+
+    // 빈 상태 안내문·허브 버튼이 표시돼야 한다
+    expect(screen.getByText("표시할 결과가 없어요.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "허브로 돌아가기" })).toBeInTheDocument();
+    // 우승자 이름·축하 문구 미표시
+    expect(screen.queryByText("챔피언 게임")).toBeNull();
+    expect(screen.queryByText(/GameCup 챔피언/)).toBeNull();
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 12) 데이터 전달 — activeTournament 이름이 결과 화면 부제목에 정확히 표시된다 (Task #44, F-10)
+  // WHY: 결과 화면은 store에서 activeTournament.name을 읽어 헤더 부제목으로 표시한다.
+  //      올바른 토너먼트 이름이 전달됐는지 명시적으로 검증한다.
+  // ───────────────────────────────────────────────────────────────────────────
+  it("activeTournament 이름이 결과 화면 부제목에 표시된다 (Task #44, F-10 데이터 전달)", async () => {
+    useStateStore.getState().setWinner(mkGame("champ", "챔피언 게임"));
+    useStateStore.setState({
+      activeTournament: mkTournament("tour-특별전"),
+    });
+
+    await renderResultPage();
+    await waitFor(() => expect(mockSaveResult).toHaveBeenCalled());
+
+    // 부제목에 토너먼트 이름이 표시돼야 한다
+    expect(screen.getByText("Tournament tour-특별전")).toBeInTheDocument();
   });
 });
