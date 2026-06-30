@@ -97,9 +97,23 @@ export function ResultPage() {
   }, [savedResult]);
 
   // URL 클립보드 복사 — 2초 후 피드백 초기화
+  // 브라우저 호환성: Firefox는 navigator.clipboard 권한을 요청할 수 있고 거부될 수 있다.
+  // 거부 시 document.execCommand('copy') 레거시 폴백으로 재시도한다 (Task #56~58).
   const handleCopy = useCallback(async () => {
     if (!shareUrl) return;
-    await navigator.clipboard.writeText(shareUrl);
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+    } catch {
+      // navigator.clipboard 실패 시 (권한 거부·비HTTPS·구형 브라우저) 레거시 방식으로 폴백
+      const textarea = document.createElement("textarea");
+      textarea.value = shareUrl;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    }
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
   }, [shareUrl]);
