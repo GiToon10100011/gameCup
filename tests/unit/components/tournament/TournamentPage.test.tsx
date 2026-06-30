@@ -1,4 +1,4 @@
-// TournamentPage 컴포넌트 테스트 — Task #27/#32/#34/#35/#38
+// TournamentPage 컴포넌트 테스트 — Task #27/#32/#34/#35/#38 + Story #47 (NF-02)
 //
 // 검증 범위:
 //   1) activeTournament 없을 때 허브(/)로 리다이렉트
@@ -18,6 +18,8 @@
 //  15) 미결 대결 남아 있으면 advanceRound 미호출 (Task #35)
 //  16) winner 이미 확정 시 advanceRound 미호출 — 토너먼트 종료 상태 (Task #35)
 //  17) 부전승만 있는 라운드는 즉시 advanceRound 자동 호출 (Task #38, F-09)
+//  18) 선택 클릭 후 MatchCard disabled=true가 전달된다 (Story #47, NF-02 시각적 비활성화)
+//  19) 동일 페어에 연속 클릭해도 selectWinner는 한 번만 호출된다 (Story #47, NF-02 이중 클릭 차단)
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render, screen, fireEvent } from "@testing-library/react";
@@ -62,17 +64,20 @@ vi.mock("@/components/tournament/RoundProgressIndicator", () => ({
 // 배선(어떤 pair로, onSelect가 올바르게 연결됐는지)만 검증한다.
 // ─────────────────────────────────────────────────────────────────────────────
 vi.mock("@/components/tournament/MatchCard", () => ({
+  // disabled prop 포함 — Story #47 NF-02 시각적 비활성화 검증에 필요
   MatchCard: ({
     pair,
     onSelect,
+    disabled,
   }: {
     pair: ITournamentPair;
     onSelect: (game: IGame) => void;
+    disabled?: boolean;
   }) => (
-    <div data-testid="match-card">
+    <div data-testid="match-card" data-disabled={String(disabled)}>
       <span data-testid="match-gameA">{pair.gameA.name}</span>
       {pair.gameB && <span data-testid="match-gameB">{pair.gameB.name}</span>}
-      <button onClick={() => onSelect(pair.gameA)}>
+      <button onClick={() => onSelect(pair.gameA)} disabled={disabled}>
         {pair.gameA.name} 선택
       </button>
     </div>
@@ -441,5 +446,60 @@ describe("TournamentPage (Task #27, F-06)", () => {
 
     // roundComplete 조건 충족 → advanceRound 즉시 호출
     expect(mockAdvanceRound).toHaveBeenCalledOnce();
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 18) 선택 클릭 후 MatchCard disabled=true가 전달된다 (Story #47, NF-02)
+  // WHY: 클릭 직후 MatchCard에 disabled prop이 true로 전달돼 버튼이 시각적으로 비활성화된다.
+  //      사용자가 처리 완료 전 재클릭을 시도해도 UI가 차단됐음을 명확히 인지하게 한다.
+  // ───────────────────────────────────────────────────────────────────────────
+  it("선택 클릭 직후 MatchCard에 disabled=true가 전달된다 (Story #47, NF-02)", async () => {
+    useStateStore.getState().setActive(mkTournament());
+    const pair: ITournamentPair = {
+      gameA: mkGame("g1"),
+      gameB: mkGame("g2"),
+      winner: null,
+      isBye: false,
+    };
+    useStateStore.getState().setRoundState(1, [pair]);
+
+    await renderTournamentPage();
+
+    // 초기: disabled=false
+    expect(screen.getByTestId("match-card")).toHaveAttribute("data-disabled", "false");
+
+    // 클릭 → isSelecting=true → re-render → disabled=true
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Game g1 선택" }));
+    });
+
+    // re-render 이후 disabled=true 전달 확인
+    expect(screen.getByTestId("match-card")).toHaveAttribute("data-disabled", "true");
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 19) 연속 클릭 시 selectWinner는 한 번만 호출된다 (Story #47, NF-02)
+  // WHY: isSelectingRef로 React 리렌더 전 동기적 연속 클릭을 즉시 차단한다.
+  //      첫 번째 클릭에서 ref가 true로 설정되므로 두 번째 동기 클릭은 즉시 반환된다.
+  // ───────────────────────────────────────────────────────────────────────────
+  it("동일 페어에 연속 클릭해도 selectWinner는 한 번만 호출된다 (Story #47, NF-02)", async () => {
+    useStateStore.getState().setActive(mkTournament());
+    const pair: ITournamentPair = {
+      gameA: mkGame("g1"),
+      gameB: mkGame("g2"),
+      winner: null,
+      isBye: false,
+    };
+    useStateStore.getState().setRoundState(1, [pair]);
+
+    await renderTournamentPage();
+
+    const btn = screen.getByRole("button", { name: "Game g1 선택" });
+    // 두 번 동기 클릭 — React 리렌더 전이므로 ref 기반 차단이 작동해야 한다
+    fireEvent.click(btn);
+    fireEvent.click(btn);
+
+    // selectWinner는 정확히 1번만 호출됐어야 한다
+    expect(mockSelectWinner).toHaveBeenCalledTimes(1);
   });
 });
