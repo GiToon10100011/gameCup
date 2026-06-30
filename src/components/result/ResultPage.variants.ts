@@ -20,6 +20,16 @@ export const resultPageVariants = tv({
       "border border-[#faff69]/20 bg-[#1a1a1a] px-8 py-10 text-center",
     ].join(" "),
     winnerLabel: "text-xs font-semibold uppercase tracking-widest text-[#faff69]",
+    // 우승 게임 썸네일 래퍼 — next/image fill 사용 시 relative 필수 (Task #43, F-10)
+    winnerThumbnailWrapper: [
+      "relative h-36 w-36 overflow-hidden rounded-xl",
+      "border border-[#faff69]/30",
+      "shadow-[0_0_24px_rgba(250,255,105,0.12)]",
+    ].join(" "),
+    // 우승 게임 썸네일 이미지
+    winnerThumbnail: "object-cover",
+    // 축하 문구 — 우승자 이름 아래 표시 (Task #43, F-10)
+    congratsMessage: "text-sm font-medium text-[#faff69]",
     winnerName: "text-4xl font-bold text-white",
     savingText: "text-sm text-[#888888]",
     errorText: "mt-2 text-sm text-[#ef4444]",
