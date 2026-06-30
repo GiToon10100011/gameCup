@@ -1,4 +1,4 @@
-// ResultPage 통합 테스트 — Task #125 (F-19, UC-09)
+// ResultPage 통합 테스트 — Task #125 (F-19, UC-09) + Task #43 (F-10, 썸네일·축하 문구)
 //
 // 검증 범위:
 //   1) winner·activeTournament 없음 → 빈 상태 "표시할 결과가 없어요." 표시
@@ -8,6 +8,9 @@
 //   5) saveResult 실패 → role=alert 에러 메시지 표시
 //   6) "새 토너먼트 시작" 클릭 → startNewTournament 호출 + router.push('/')
 //   7) winner 없을 때 "허브로 돌아가기" 클릭 → router.push('/')
+//   8) thumbnailUrl 있으면 img 렌더 (Task #43, F-10)
+//   9) thumbnailUrl 없으면 img 미렌더 (Task #43, F-10)
+//  10) 축하 문구 "GameCup 챔피언!" 표시 (Task #43, F-10)
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -200,5 +203,51 @@ describe("ResultPage 통합 (Task #125)", () => {
     fireEvent.click(screen.getByRole("button", { name: "허브로 돌아가기" }));
 
     expect(mockPush).toHaveBeenCalledWith("/");
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 8) thumbnailUrl 있으면 우승자 이미지 렌더 (Task #43, F-10)
+  // WHY: next/image는 테스트 환경에서 일반 <img>로 렌더된다. alt 속성으로 요소를 조회한다.
+  // ───────────────────────────────────────────────────────────────────────────
+  it("thumbnailUrl이 있으면 우승자 썸네일 이미지가 렌더된다 (Task #43, F-10)", async () => {
+    const winner = { id: "champ", name: "챔피언 게임", thumbnailUrl: "https://example.com/champ.jpg" };
+    useStateStore.getState().setWinner(winner);
+    useStateStore.setState({ activeTournament: mkTournament("tour-001") });
+
+    await renderResultPage();
+    await waitFor(() => expect(mockSaveResult).toHaveBeenCalled());
+
+    // next/image는 jsdom에서 일반 img로 렌더된다
+    const img = screen.getByRole("img", { name: "챔피언 게임" });
+    expect(img).toBeInTheDocument();
+    expect(img).toHaveAttribute("alt", "챔피언 게임");
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 9) thumbnailUrl 없으면 img 미렌더 (Task #43, F-10)
+  // ───────────────────────────────────────────────────────────────────────────
+  it("thumbnailUrl이 없으면 우승자 썸네일 이미지가 렌더되지 않는다 (Task #43, F-10)", async () => {
+    // mkGame은 thumbnailUrl=""로 생성 — 이미지 없음
+    useStateStore.getState().setWinner(mkGame("champ", "챔피언 게임"));
+    useStateStore.setState({ activeTournament: mkTournament("tour-001") });
+
+    await renderResultPage();
+    await waitFor(() => expect(mockSaveResult).toHaveBeenCalled());
+
+    // img role 요소가 없어야 한다
+    expect(screen.queryByRole("img")).toBeNull();
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 10) 축하 문구 "GameCup 챔피언!" 표시 (Task #43, F-10)
+  // ───────────────────────────────────────────────────────────────────────────
+  it("우승자가 있으면 축하 문구 'GameCup 챔피언!'이 표시된다 (Task #43, F-10)", async () => {
+    useStateStore.getState().setWinner(mkGame("champ", "챔피언 게임"));
+    useStateStore.setState({ activeTournament: mkTournament("tour-001") });
+
+    await renderResultPage();
+    await waitFor(() => expect(mockSaveResult).toHaveBeenCalled());
+
+    expect(screen.getByText(/GameCup 챔피언/)).toBeInTheDocument();
   });
 });
