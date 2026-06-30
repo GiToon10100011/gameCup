@@ -13,7 +13,7 @@
 //
 // 3계층: Presentation → Business(tournamentModule) → Store(stateStore)
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStateStore } from "@/store/stateStore";
 import { startTournament, selectWinner, advanceRound } from "@/modules/tournamentModule";
@@ -58,6 +58,18 @@ export function TournamentPage() {
     }
   }, [currentMatches, winner]);
 
+  // NF-02 — 게임 선택 처리 중 플래그.
+  // ref: React 리렌더 전 동기적 연속 클릭을 즉시 차단한다.
+  // state: MatchCard disabled prop에 전달해 버튼을 시각적으로 비활성화한다.
+  const isSelectingRef = useRef(false);
+  const [isSelecting, setIsSelecting] = useState(false);
+
+  // currentMatches가 바뀌면(새 페어 표시·라운드 진행) 처리 상태를 리셋 (NF-02)
+  useEffect(() => {
+    isSelectingRef.current = false;
+    setIsSelecting(false);
+  }, [currentMatches]);
+
   // 시작하기 버튼 활성화 조건 (Task #27 핵심 로직):
   //   - activeTournament 유효 (허브에서 선택 완료)
   //   - 후보 2개 이상 (생성 시 보장되지만 방어적 검사)
@@ -79,15 +91,21 @@ export function TournamentPage() {
   const currentMatch: ITournamentPair | null =
     currentMatches.find((m) => m.winner === null && !m.isBye) ?? null;
 
-  // 게임 선택 핸들러 (Task #32, NF-02 이중 선택 방지)
-  // WHY: store를 직접 조회해 React 렌더 사이클과 무관하게 최신 winner 상태를 확인한다.
-  // 연속 클릭 시 첫 번째 selectWinner 호출로 store가 갱신되므로 두 번째 호출은 차단된다.
+  // 게임 선택 핸들러 (Task #32, NF-02 이중 선택 방지 + Story #47 강화)
+  // 1차 차단(ref): React 리렌더 전 동기적 연속 클릭을 즉시 블록한다.
+  // 2차 차단(store): selectWinner 이후 store winner 확정 여부로 재진입 방지.
   const handleSelect = useCallback((pair: ITournamentPair, game: IGame) => {
+    // ref 기반 동기적 1차 차단 — useState는 배치 처리로 즉시 반영되지 않아 ref가 필수
+    if (isSelectingRef.current) return;
     const latestPair = useStateStore.getState().currentMatches.find(
       (m) => m.gameA.id === pair.gameA.id,
     );
-    // 이미 winner가 확정된 페어 재선택 방지
+    // store 기반 2차 차단 — 이미 winner가 확정된 페어 재선택 방지
     if (!latestPair || latestPair.winner !== null) return;
+
+    // 처리 시작 — ref(즉시 차단) + state(시각적 disable) 동시 설정
+    isSelectingRef.current = true;
+    setIsSelecting(true);
     selectWinner(pair, game);
   }, []);
 
@@ -136,10 +154,11 @@ export function TournamentPage() {
           <RoundProgressIndicator />
 
           {currentMatch ? (
-            /* 미결 대결이 있으면 MatchCard 렌더 */
+            /* 미결 대결이 있으면 MatchCard 렌더 — disabled로 연속 클릭 시각적 차단 (NF-02) */
             <MatchCard
               pair={currentMatch}
               onSelect={(game) => handleSelect(currentMatch, game)}
+              disabled={isSelecting}
             />
           ) : (
             /* 모든 대결 완료 — advanceRound useEffect가 즉시 호출되므로 실제로는 미노출 */
