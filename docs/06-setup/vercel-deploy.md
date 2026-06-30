@@ -37,9 +37,10 @@ Vercel 대시보드에서 **Settings → Environment Variables**에 아래 변�
 | 변수명 | 예시 값 | 설명 |
 |---|---|---|
 | `NEXT_PUBLIC_RAWG_KEY` | `abc123...` | RAWG API 키 |
-| `NEXT_PUBLIC_RAWG_BASE_URL` | `https://api.rawg.io/api` | RAWG API 기본 URL (기본값 그대로 사용 가능) |
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://xxxx.supabase.co` | Supabase Project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `eyJ...` | Supabase anon(public) 키 |
+
+> ℹ️ `NEXT_PUBLIC_RAWG_BASE_URL`은 `next.config.mjs`에 기본값(`https://api.rawg.io/api`)이 내장돼 있어 등록 불필요. RAWG 프록시 서버 교체 시에만 오버라이드한다.
 
 > ⚠️ **주의:** `service_role` 키는 절대 등록하지 않는다 — 클라이언트에 노출되면 RLS를 우회할 수 있다.
 
@@ -88,7 +89,7 @@ Vercel 대시보드 → **Deployments** 탭에서:
 | 변수명 | 필수 | 기본값 | 비고 |
 |---|---|---|---|
 | `NEXT_PUBLIC_RAWG_KEY` | ✅ | - | 없으면 게임 검색 불가 |
-| `NEXT_PUBLIC_RAWG_BASE_URL` | ❌ | `https://api.rawg.io/api` | 기본값 사용 권장 |
+| `NEXT_PUBLIC_RAWG_BASE_URL` | ❌ | `next.config.mjs`에 내장 | Vercel 등록 불필요; 프록시 교체 시만 오버라이드 |
 | `NEXT_PUBLIC_SUPABASE_URL` | ✅ | - | 없으면 로그인·저장 불가 |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ | - | 없으면 Supabase 호출 실패 |
 
