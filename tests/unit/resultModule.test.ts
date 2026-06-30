@@ -19,7 +19,6 @@ const mkGame = (id: string): IGame => ({ id, name: `Game ${id}`, thumbnailUrl: "
 const mkUser = (id: string): IUser => ({
   id,
   email: `${id}@test.com`,
-  createdAt: "2026-06-30T00:00:00Z",
 });
 
 describe("resultModule (Task #45, F-13)", () => {
