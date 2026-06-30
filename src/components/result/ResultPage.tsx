@@ -9,6 +9,7 @@
 //   - Store 구독: useStateStore (winner, activeTournament — TournamentLibrarySlice/play state)
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useStateStore } from "@/store/stateStore";
 import { tournamentStorageModule } from "@/modules/tournamentStorageModule";
@@ -140,7 +141,22 @@ export function ResultPage() {
       {/* 우승자 카드 — 황금 테두리로 강조 */}
       <section aria-label="우승자" className={styles.winnerSection()}>
         <p className={styles.winnerLabel()}>우승</p>
+        {/* 우승 게임 썸네일 — thumbnailUrl 있을 때만 렌더 (Task #43, F-10) */}
+        {winner.thumbnailUrl && (
+          <div className={styles.winnerThumbnailWrapper()}>
+            {/* unoptimized: RAWG 외부 URL을 next/image 최적화 파이프라인 없이 사용 */}
+            <Image
+              src={winner.thumbnailUrl}
+              alt={winner.name}
+              fill
+              className={styles.winnerThumbnail()}
+              unoptimized
+            />
+          </div>
+        )}
         <p className={styles.winnerName()}>{winner.name}</p>
+        {/* 축하 문구 (Task #43, F-10) */}
+        <p className={styles.congratsMessage()}>GameCup 챔피언! 🏆</p>
         {/* 저장 중 표시 — 자동 저장 진행 상태 */}
         {isSaving && <p className={styles.savingText()}>결과 저장 중…</p>}
         {/* 에러 배너 — role=alert로 접근성 보장 */}
