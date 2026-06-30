@@ -56,9 +56,10 @@ NEXT_PUBLIC_RAWG_KEY=발급받은_키_여기에
 
 ## 5. 환경 변수 상세
 
-| 키 이름 | 값 형식 | 노출 범위 | 비고 |
-| --- | --- | --- | --- |
-| `NEXT_PUBLIC_RAWG_KEY` | 32자 hex | 클라이언트(브라우저) | `NEXT_PUBLIC_` prefix로 브라우저 번들에 포함됨 |
+| 키 이름 | 값 형식 | 필수/선택 | 노출 범위 | 비고 |
+| --- | --- | --- | --- | --- |
+| `NEXT_PUBLIC_RAWG_KEY` | 32자 hex | **필수** | 클라이언트(브라우저) | `NEXT_PUBLIC_` prefix로 브라우저 번들에 포함됨 |
+| `NEXT_PUBLIC_RAWG_BASE_URL` | URL | 선택 | 클라이언트(브라우저) | RAWG API 베이스 URL **override**. 미설정 시 기본값 `https://api.rawg.io/api` 사용(`src/lib/externalApiClient.ts`). 환경별 프록시 도입·호스트 교체·목 서버 연결 시에만 지정 |
 
 **향후 보안 강화 검토(Iteration 4+):** 키 노출 우려가 커지면 `app/api/games/route.ts` 같은 Next.js API Route 프록시를 거치도록 변경하여 서버 사이드에서만 키를 사용한다.
 

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cmd=$(jq -r \".tool_input.command // \\\"\\\"\"); printf \"%s\" \"$cmd\" | grep -Eq \"gh pr create|git push\" && jq -n \"{hookSpecificOutput:{hookEventName:\\\"PostToolUse\\\",additionalContext:\\\"⏳ 방금 PR에 영향을 주는 git 작업(gh pr create/git push)을 수행했다. 이 PR을 리뷰 완료·머지 가능으로 단정하기 전에 반드시: ① gh pr checks <PR>에서 CodeRabbit 체크가 pending이 아닐 때까지 폴링·대기 ② 끝나면 신규 인라인 코멘트와 미해소 reviewThreads 확인 ③ 타당한 지적은 수정·재푸시·답변. 폴링을 빠뜨리지 말 것.\\\"}}\"; true",
+            "timeout": 15,
+            "statusMessage": "CodeRabbit 대기 리마인더 점검"
+          }
+        ]
+      }
+    ]
+  }
+}

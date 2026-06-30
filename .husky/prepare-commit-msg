@@ -36,8 +36,9 @@ esac
 ISSUE_NUM="$(printf '%s' "$BRANCH_NAME" | sed -nE 's@^[a-z]+/([0-9]+)([-_/.].*)?$@\1@p')"
 [ -z "$ISSUE_NUM" ] && exit 0
 
-# 첫 줄(제목) 추출 — 주석/공백 라인 무시
-FIRST_LINE="$(grep -vE '^[[:space:]]*#' "$COMMIT_MSG_FILE" | sed -n '1p')"
+# 첫 줄(제목) 추출 — 주석(#로 시작)과 공백 라인 모두 무시한 뒤 첫 유효 라인 선택
+# PR #74 리뷰 반영: 주석만 제외하면 첫 비주석 줄이 공백일 때 훅이 빈 제목으로 종료됨.
+FIRST_LINE="$(grep -vE '^[[:space:]]*(#|$)' "$COMMIT_MSG_FILE" | sed -n '1p')"
 [ -z "$FIRST_LINE" ] && exit 0
 
 # fixup!/squash! 커밋은 그대로 둔다

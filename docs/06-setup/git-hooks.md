@@ -73,7 +73,7 @@ npx lint-staged
 
 #### prepare-commit-msg — 브랜치명→이슈 번호 자동 멘션
 
-`.husky/prepare-commit-msg`는 현재 브랜치명이 `<type>/<number>-<slug>` 패턴이면 커밋 제목 끝에 ` (#N)`을 자동으로 부착한다. 결과: GitHub이 해당 커밋을 이슈 페이지에 자동 백링크.
+`.husky/prepare-commit-msg`는 현재 브랜치명이 `<type>/<number>-<slug>` 패턴이면 커밋 제목 끝에 `(#N)`을 자동으로 부착한다. 결과: GitHub이 해당 커밋을 이슈 페이지에 자동 백링크.
 
 **작동 예시:**
 

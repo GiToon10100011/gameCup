@@ -703,7 +703,7 @@ EPIC-05 참고:
 
 실제 GitHub Issue 번호 생성 후 아래 형식으로 브랜치를 생성한다.
 
-```
+```text
 chore/1-project-setup
 chore/2-folder-structure-types
 chore/3-game-api-client-setup

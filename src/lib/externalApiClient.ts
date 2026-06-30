@@ -3,9 +3,12 @@
 
 import type { IApiError, IGame } from "@/types/game";
 
-// RAWG API의 베이스 URL. 환경 변수가 아닌 상수로 두는 이유: 호스트가 바뀔 일이 거의 없고
-// 환경 변수에 노출시키면 의도치 않게 다른 도메인을 부르는 사고가 생길 수 있다.
-const RAWG_BASE_URL = "https://api.rawg.io/api";
+// RAWG API의 베이스 URL.
+// PR #64 리뷰 피드백("BASE_URL은 환경변수로 정의하여 전역적으로 재사용") 반영하여 env 우선·기본값 fallback 패턴.
+// - 환경별(개발/스테이징/프로덕션) 또는 프록시 도입 시 코드 변경 없이 URL 교체 가능
+// - 환경 변수 미설정 시 공식 RAWG 호스트로 안전 폴백
+const RAWG_BASE_URL =
+  process.env.NEXT_PUBLIC_RAWG_BASE_URL ?? "https://api.rawg.io/api";
 
 // RAWG가 반환하는 원본 게임 객체의 부분 타입.
 // 우리는 id/name/배경 이미지만 필요하므로 그 외 필드는 정의하지 않는다.
@@ -54,18 +57,37 @@ export async function fetchGames(query: string): Promise<IGame[]> {
     throw new ExternalApiError(`RAWG request failed: ${res.statusText}`, res.status);
   }
 
-  // 4) JSON 파싱 후 도메인 형태로 정규화
-  const data = (await res.json()) as IRawgResponse;
+  /**
+   * 4) JSON 파싱 + 스키마 검증 — 실패 시도 ExternalApiError로 래핑해 상위가 단일 catch로 처리.
+   * PR #74 리뷰: 파싱 실패·`results` 형태 이상이 일반 예외로 전파되면 §40 계약이 깨진다.
+   */
+  let data: IRawgResponse;
+  try {
+    data = (await res.json()) as IRawgResponse;
+  } catch (parseError) {
+    throw new ExternalApiError(
+      `RAWG response JSON parse failed: ${(parseError as Error).message}`,
+      res.status,
+    );
+  }
+  if (!data || !Array.isArray(data.results)) {
+    throw new ExternalApiError(
+      "RAWG response missing 'results' array",
+      res.status,
+    );
+  }
   return normalizeResponse(data);
 }
 
-// RAWG 원본 응답을 GameCup 내부에서 사용하는 IGame 형태로 정규화한다.
-// - id를 string으로 통일 (다른 외부 API로 교체할 때도 같은 형태 유지)
-// - background_image가 null이면 빈 문자열로 fallback해 컴포넌트가 placeholder를 표시
+/**
+ * RAWG 원본 응답을 GameCup 내부에서 사용하는 IGame 형태로 정규화한다.
+ * - id를 string으로 통일 (다른 외부 API로 교체할 때도 같은 형태 유지)
+ * - background_image가 null이면 빈 문자열로 fallback해 컴포넌트가 placeholder 표시
+ */
 function normalizeResponse(raw: IRawgResponse): IGame[] {
-  return raw.results.map((g) => ({
-    id: String(g.id),
-    name: g.name,
-    thumbnailUrl: g.background_image ?? "",
+  return raw.results.map((rawGame) => ({
+    id: String(rawGame.id),
+    name: rawGame.name,
+    thumbnailUrl: rawGame.background_image ?? "",
   }));
 }

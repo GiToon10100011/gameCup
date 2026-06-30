@@ -23,9 +23,9 @@
 | [`rawg-api-key.md`](./rawg-api-key.md) | RAWG API 키 발급 + `.env.local` 설정 | Iteration 1 / 2026.03.31 | 활성 |
 | [`git-hooks.md`](./git-hooks.md) | Husky + lint-staged 로컬 hook 설정 | Iteration 3 / 2026.05.19 | 활성 |
 | [`github-actions.md`](./github-actions.md) | GitHub Actions CI 워크플로우 (lint·typecheck·test·build·hook 무결성) | Iteration 3 / 2026.05.19 | 활성 |
-| `supabase-setup.md` | Supabase 프로젝트 생성·DB 스키마·환경 변수 | Iteration 4 (예정) | 미작성 |
+| [`supabase-setup.md`](./supabase-setup.md) | Supabase 프로젝트 생성·이메일 OTP 인증·DB 스키마(tournaments·tournament_results·public_shares)·RLS 정책·환경 변수 | Iteration 4 / 2026.05.25 | 활성 |
 | `sentry-setup.md` | Sentry DSN 발급·Next.js 통합·소스맵 업로드 | Iteration 4 (예정) | 미작성 |
-| `vercel-deploy.md` | Vercel 연동·환경 변수·프리뷰 배포 | Iteration 4 (예정) | 미작성 |
+| [`vercel-deploy.md`](./vercel-deploy.md) | Vercel 연동·환경 변수·프리뷰(dev·PR)·프로덕션(main) 배포 · Supabase Redirect URL 설정 | Iteration 4 / 2026.06.30 | 활성 |
 | `playwright-e2e.md` | Playwright 브라우저 바이너리 설치·로컬 실행 | Phase 4 (테스트 정비) | 미작성 |
 | [`linear-cycles.md`](./linear-cycles.md) | Linear Cycle(Sprint) cadence 초기화 (4주·일요일 시작·첫 사이클 2026-05-24·웹 UI 절차) | Phase 0 후속 / 2026.05.21 | 활성 |
 | [`github-actions-coderabbit-notify.md`](./github-actions-coderabbit-notify.md) | CodeRabbit 리뷰 완료 자동 감지 → 라벨 + 알림 (체크 success 게이트, 향후 auto-fix 업그레이드) | Phase 1 / 2026.05.24 | 활성 (main 도달 후 발동) |
